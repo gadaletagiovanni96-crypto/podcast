@@ -99,3 +99,25 @@ Terza postazione: trasmette un video scelto dall'animatore, con lo stile di un v
 ## Consigli per la TV a tubo
 - Imposta l'uscita del PC in 4:3 (es. 800×600 o 1024×768) e, se la TV lo permette, scegli "duplica schermo".
 - I video lunghi occupano spazio nel browser: meglio file MP4 sotto 1–2 GB.
+
+---
+
+# 🖥️ PC AC (`desktop.html`)
+
+Quarta postazione: simula il desktop di un computer anni 2000 (barra delle applicazioni, finestre, cartelle, fumetti di notifica), nei colori blu e giallo delle altre.
+
+## Come si usa
+1. Apri `desktop.html` con Chrome/Edge e clicca **"Accendi il PC"** (schermata di avvio e suono di benvenuto).
+2. Premi **X** → password (predefinita **`azione2026`**) → pannello animatore.
+3. **"+ Aggiungi video dal PC"**: scegli i video che compariranno nella cartella. Puoi **rinominarli**, **cambiare l'ordine** (▲) e **toglierli** (✕). Restano salvati nel browser.
+
+## Cosa possono fare i ragazzi
+- **Doppio clic** sulla cartella del desktop (o *menu → nome cartella*) per aprirla: dentro ci sono i video con anteprima e durata.
+- **Doppio clic** su un video: si apre in una **finestra** (non a tutto schermo) con **Play/Pausa**, **Stop** e **barra di scorrimento** trascinabile. Clic sul video = play/pausa.
+- Le finestre si possono **spostare** trascinando la barra blu del titolo, **ridurre a icona** (_) e **chiudere** (✕); dalla barra in basso si riaprono.
+- Si possono aprire più video, ma ne suona **uno alla volta** (aprendone/avviandone un altro, il precedente va in pausa).
+- A fine video si torna all'inizio in pausa.
+- Su schermi touch basta un tocco al posto del doppio clic.
+
+## Ritorno automatico al desktop
+Se **nessun video è in riproduzione** e nessuno tocca mouse/tastiera per il tempo impostato (predefinito **60 secondi**, modificabile nel pannello), tutte le finestre si chiudono e ricompare il fumetto di benvenuto.
