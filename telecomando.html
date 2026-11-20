@@ -149,7 +149,12 @@
     catch { $("stato").textContent = "SEGNALE ASSENTE"; }
     setTimeout(aggiornaStato, 250);
   }
-  $("btnPlay").onclick = () => invia(tv && tv.playing ? "pausa" : "play");
+  // "toggle": è la TV a decidere in base a cosa sta facendo davvero, così il tasto
+  // funziona sempre anche se il telefono ha ricevuto uno stato vecchio
+  $("btnPlay").onclick = () => {
+    if (tv) { tv.playing = !tv.playing; attesaFino = Date.now() + 1500; disegna(); }   // risposta immediata sullo schermo
+    invia("toggle");
+  };
   $("btnInizio").onclick = () => invia("inizio");
 
   function disegna() {
@@ -166,22 +171,40 @@
     else if (tv.playing) $("stato").textContent = "▶ IN ONDA";
     else if (tv.tempo < 0.3) $("stato").textContent = "■ IN ATTESA";
     else $("stato").textContent = "❚❚ PAUSA";
-    $("titolo").textContent = tv.titolo || " ";
+    $("titolo").textContent = tvDoppia() ? "⚠ TV aperta due volte sul PC!" : (tv.titolo || " ");
     $("tempo").textContent = fmt(tv.tempo); $("durata").textContent = fmt(tv.durata);
     $("barra").style.width = (tv.durata ? Math.min(100, tv.tempo / tv.durata * 100) : 0) + "%";
     $("icoPlay").innerHTML = tv.playing ? '<rect x="5" y="4" width="5" height="16"/><rect x="14" y="4" width="5" height="16"/>' : '<path d="M7 4v16l13-8z"/>';
     $("lblPlay").textContent = tv.playing ? "PAUSA" : "PLAY";
   }
 
+  let seqInviata = 0, seqApplicata = 0, errori = 0, attesaFino = 0;
+  const idVisti = new Map();   // id delle TV che rispondono → ultima volta visti
   async function aggiornaStato() {
+    const seq = ++seqInviata;
     try {
-      const r = await fetch("/api/stato", { cache: "no-store" });
+      const ctrl = new AbortController(); const to = setTimeout(() => ctrl.abort(), 2500);
+      const r = await fetch("/api/stato?_=" + Date.now(), { cache: "no-store", signal: ctrl.signal });
+      clearTimeout(to);
       const j = await r.json();
+      if (seq < seqApplicata) return;            // risposta arrivata fuori ordine: la ignoro
+      seqApplicata = seq; errori = 0;
       eta = j.eta; serverOk = true;
       collegato = j.eta < 5 && !!j.tv;
+      // subito dopo una pressione aspetto che la TV confermi, senza far "saltare" il tasto
+      if (j.tv && Date.now() < attesaFino && tv && j.tv.playing !== tv.playing) { disegna(); return; }
       tv = j.tv;
-    } catch { collegato = false; serverOk = false; }
+      if (tv && tv.id) idVisti.set(tv.id, Date.now());
+    } catch {
+      // un singolo errore di rete non basta per dire "scollegato"
+      if (++errori >= 3) { collegato = false; serverOk = false; }
+    }
     disegna();
+  }
+  function tvDoppia() {
+    const ora = Date.now(); let n = 0;
+    idVisti.forEach((t, id) => { if (ora - t < 6000) n++; else idVisti.delete(id); });
+    return n > 1;
   }
   setInterval(aggiornaStato, 800);
   aggiornaStato();

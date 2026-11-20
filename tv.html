@@ -240,6 +240,13 @@
 </div>
 
 <!-- Uscita dal fullscreen -->
+<div class="overlay" id="ovDoppia">
+  <div class="modal">
+    <h3>TV APERTA DUE VOLTE</h3>
+    <p>Questa TV è stata aperta anche in un'altra scheda o finestra del browser. Per non confondere il telecomando questa copia è stata spenta: <b>puoi chiudere questa scheda</b>.</p>
+  </div>
+</div>
+
 <div class="overlay" id="ovFullscreen">
   <div class="modal">
     <h3>SEGNALE INTERROTTO</h3>
@@ -673,7 +680,20 @@
   /* ================= Telecomando dal telefono ================= */
   // Funziona solo se la TV è aperta tramite il programma server (http://localhost:8080/tv.html)
   const CON_SERVER = location.protocol.startsWith("http") && !/github\.io$/.test(location.hostname);
-  let ultimoCmd = null, serverOk = false;
+  let ultimoCmd = null, serverOk = false, telecomandoAttivo = true;
+  const ID_TV = Math.random().toString(36).slice(2, 10);
+  // Se la TV viene aperta in un'altra scheda, questa copia si spegne (altrimenti le due copie
+  // manderebbero al telefono stati diversi: una "in onda" e una "in pausa").
+  try {
+    const canale = new BroadcastChannel("tv_ac_telecomando");
+    canale.onmessage = e => {
+      if (e.data && e.data.nuova && e.data.id !== ID_TV) {
+        telecomandoAttivo = false; video.pause();
+        $("ovDoppia").classList.add("show");
+      }
+    };
+    if (CON_SERVER) canale.postMessage({ nuova: true, id: ID_TV });
+  } catch {}
   function eseguiComando(a) {
     if (!avviato || document.querySelector(".overlay.show")) return;
     mostraComandi();
@@ -683,6 +703,7 @@
     else if (a === "toggle") playPausa();
   }
   async function ascoltaTelecomando() {
+    if (!telecomandoAttivo) return;
     try {
       const r = await fetch("/api/poll?_=" + Date.now(), { cache: "no-store" });
       const j = await r.json();
@@ -693,8 +714,8 @@
     setTimeout(ascoltaTelecomando, 300);
   }
   function inviaStato() {
-    if (!serverOk) return;
-    const stato = { video: !!corrente, titolo: corrente ? corrente.nome : "", playing: !video.paused,
+    if (!serverOk || !telecomandoAttivo) return;
+    const stato = { id: ID_TV, video: !!corrente, titolo: corrente ? corrente.nome : "", playing: !video.paused,
       tempo: video.currentTime || 0, durata: isFinite(video.duration) ? video.duration : 0 };
     fetch("/api/stato", { method: "POST", body: JSON.stringify(stato), headers: { "Content-Type": "application/json" } }).catch(() => {});
   }
