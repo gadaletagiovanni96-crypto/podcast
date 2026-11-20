@@ -165,6 +165,8 @@
   .progresso.show { display: block; }
   .progresso div { height: 100%; width: 0; background: var(--giallo); }
 
+  .info-tele { background: rgba(0,0,0,0.25); border: 2px solid rgba(255,255,255,0.4); padding: 10px 12px; line-height: 1.5; font-size: 15px; }
+  .info-tele b { color: var(--giallo); word-break: break-all; }
   .toast { position: fixed; left: 50%; top: var(--safe); transform: translateX(-50%); z-index: 60; background: #000; border: 3px solid var(--verde-osd); color: var(--verde-osd); padding: 12px 20px; font-weight: bold; font-size: 3.4vmin; display: none; max-width: 86vw; text-align: center; }
   .toast.show { display: block; }
 
@@ -258,6 +260,9 @@
       <input type="file" id="inFile" accept="video/*,.mp4,.webm,.mov,.m4v,.ogv" multiple>
     </label>
     <div class="progresso" id="progresso"><div></div></div>
+
+    <div class="sez">📱 TELECOMANDO DAL TELEFONO</div>
+    <div class="info-tele" id="infoTele"></div>
 
     <div class="sez">⚙ IMPOSTAZIONI</div>
     <div class="griglia">
@@ -574,6 +579,7 @@
     $("setVolume").value = cfg.volume; $("lblVolume").textContent = cfg.volume;
     $("setPassword").value = "";
     await disegnaLibreria();
+    mostraInfoTelecomando();
     $("ovAdmin").classList.add("show");
   }
   async function disegnaLibreria() {
@@ -663,6 +669,51 @@
     if (!corrente) toast("NESSUN VIDEO: PREMI X PER SCEGLIERNE UNO", 5000);
   }
   $("avvio").onclick = avvia;
+
+  /* ================= Telecomando dal telefono ================= */
+  // Funziona solo se la TV è aperta tramite il programma server (http://localhost:8080/tv.html)
+  const CON_SERVER = location.protocol.startsWith("http") && !/github\.io$/.test(location.hostname);
+  let ultimoCmd = null, serverOk = false;
+  function eseguiComando(a) {
+    if (!avviato || document.querySelector(".overlay.show")) return;
+    mostraComandi();
+    if (a === "inizio") tornaInizio();
+    else if (a === "play") { if (video.paused) playPausa(); }
+    else if (a === "pausa") { if (!video.paused) video.pause(); }
+    else if (a === "toggle") playPausa();
+  }
+  async function ascoltaTelecomando() {
+    try {
+      const r = await fetch("/api/poll?_=" + Date.now(), { cache: "no-store" });
+      const j = await r.json();
+      if (ultimoCmd === null) ultimoCmd = j.id;          // ignora i comandi arrivati prima dell'apertura
+      else if (j.id > ultimoCmd) { ultimoCmd = j.id; eseguiComando(j.azione); }
+      serverOk = true;
+    } catch { serverOk = false; }
+    setTimeout(ascoltaTelecomando, 300);
+  }
+  function inviaStato() {
+    if (!serverOk) return;
+    const stato = { video: !!corrente, titolo: corrente ? corrente.nome : "", playing: !video.paused,
+      tempo: video.currentTime || 0, durata: isFinite(video.duration) ? video.duration : 0 };
+    fetch("/api/stato", { method: "POST", body: JSON.stringify(stato), headers: { "Content-Type": "application/json" } }).catch(() => {});
+  }
+  async function mostraInfoTelecomando() {
+    const box = $("infoTele");
+    if (!CON_SERVER || !serverOk) {
+      box.innerHTML = "Non attivo. Per usare il telefono come telecomando avvia sul PC il programma <b>avvia-telecomando-windows.bat</b> (o <b>avvia-telecomando-mac.command</b> sul Mac): la TV si aprirà da sola.";
+      return;
+    }
+    try {
+      const j = await (await fetch("/api/info", { cache: "no-store" })).json();
+      box.innerHTML = "✔ Attivo. Sul telefono (stessa rete Wi-Fi) apri:<br><b>http://" + j.ip + ":" + j.porta + "/telecomando.html</b>";
+    } catch { box.textContent = "Server non raggiungibile."; }
+  }
+  if (CON_SERVER) {
+    ascoltaTelecomando();
+    setInterval(inviaStato, 700);
+    ["play", "pause", "seeked", "loadedmetadata"].forEach(ev => video.addEventListener(ev, () => setTimeout(inviaStato, 50)));
+  }
 
   applicaCfg();
   caricaAttivo();

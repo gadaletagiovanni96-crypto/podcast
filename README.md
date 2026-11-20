@@ -121,3 +121,28 @@ Quarta postazione: simula il desktop di un computer anni 2000 (barra delle appli
 
 ## Ritorno automatico al desktop
 Se **nessun video è in riproduzione** e nessuno tocca mouse/tastiera per il tempo impostato (predefinito **60 secondi**, modificabile nel pannello), tutte le finestre si chiudono e ricompare il fumetto di benvenuto.
+
+---
+
+# 📱 Telecomando della TV dal telefono
+
+Con un telefono collegato **alla stessa rete Wi-Fi** del PC della TV puoi fare **PLAY / PAUSA** e **INIZIO**, e vedere cosa sta trasmettendo la TV.
+
+Serve un piccolo programma "ponte" che resta acceso sul PC (non va installato niente).
+
+## Windows
+1. Tieni tutti i file nella **stessa cartella** (`tv.html`, `telecomando.html`, `server.ps1`, `avvia-telecomando-windows.bat`).
+2. Doppio clic su **`avvia-telecomando-windows.bat`** → rispondi **Sì** alla richiesta di Windows (serve per aprire la porta alla rete Wi-Fi). Se compare l'avviso di Windows SmartScreen: *Ulteriori informazioni → Esegui comunque*.
+3. Si apre una finestra nera con due indirizzi e **la TV si apre da sola nel browser** (`http://localhost:8080/tv.html`). **Non chiudere la finestra nera.**
+4. Sul telefono apri l'indirizzo verde scritto nella finestra, tipo `http://192.168.1.23:8080/telecomando.html`. Puoi aggiungerlo alla schermata Home.
+
+## Mac
+Doppio clic su **`avvia-telecomando-mac.command`** (la prima volta: tasto destro → Apri). In alternativa, dal Terminale: `python3 server.py`.
+
+## Da sapere
+- L'indirizzo per il telefono lo trovi anche nel **pannello animatore della TV** (tasto X), sezione *Telecomando dal telefono*.
+- Aprendo la TV da `http://localhost:8080/tv.html` il browser la considera un sito diverso dal file aperto con doppio clic: **la prima volta ricarica il video** dal pannello animatore.
+- Il telecomando funziona solo se la TV è aperta tramite il programma ponte (non con doppio clic su `tv.html` e non da GitHub Pages).
+- Alcune reti Wi-Fi pubbliche/ospiti non lasciano parlare i dispositivi tra loro: in quel caso usa un router tuo o l'**hotspot del telefono** (collegandoci anche il PC).
+- Chiunque sia sulla stessa rete e conosca l'indirizzo può usare il telecomando: usa una rete con password.
+- In alternativa al telefono funziona anche un **telecomando per presentazioni** USB/Bluetooth (le frecce e i tasti pagina sono già collegati).

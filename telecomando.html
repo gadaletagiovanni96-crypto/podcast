@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#061a3a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Telecomando TV</title>
+<style>
+  :root {
+    --blu-notte: #061a3a; --blu: #0b3d91; --blu-chiaro: #1e63d6;
+    --giallo: #ffc72c; --bianco: #fff; --rosso: #ff4d5e; --verde-osd: #7dff8a;
+    --font-osd: "Lucida Console", Consolas, "Courier New", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI", -apple-system, "Helvetica Neue", Arial, sans-serif; color: var(--bianco);
+    background: radial-gradient(circle at 30% 0%, rgba(30,99,214,0.6), transparent 55%), linear-gradient(170deg, #0b3d91, #061a3a 70%);
+    background-color: var(--blu-notte);
+    display: flex; align-items: center; justify-content: center;
+    padding: calc(16px + env(safe-area-inset-top)) 16px calc(16px + env(safe-area-inset-bottom));
+    user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+    overflow: hidden;
+  }
+  .telecomando {
+    width: min(340px, 100%); max-height: 100%;
+    background: linear-gradient(180deg, #1a1f2b, #0c0f16);
+    border-radius: 48px 48px 64px 64px; padding: 26px 24px 34px;
+    box-shadow: 0 30px 60px rgba(0,0,0,0.6), inset 0 2px 0 rgba(255,255,255,0.12), inset 0 -4px 0 rgba(0,0,0,0.5);
+    border: 2px solid #2a3142;
+    display: flex; flex-direction: column; align-items: center; gap: 22px;
+  }
+  .testa { width: 100%; display: flex; justify-content: space-between; align-items: center; }
+  .led { width: 12px; height: 12px; border-radius: 50%; background: #3a1d22; transition: background .1s, box-shadow .1s; }
+  .led.on { background: var(--rosso); box-shadow: 0 0 12px var(--rosso); }
+  .marca { font-weight: 900; font-style: italic; color: var(--giallo); letter-spacing: 1px; }
+  .conn { font-size: .75rem; color: #8a93a8; display: flex; align-items: center; gap: 6px; }
+  .conn i { width: 8px; height: 8px; border-radius: 50%; background: #666; }
+  .conn.ok i { background: #2ecc71; } .conn.ko i { background: var(--rosso); }
+
+  /* mini schermo */
+  .schermo {
+    width: 100%; background: var(--blu-notte); border-radius: 14px; padding: 12px 14px;
+    font-family: var(--font-osd); border: 3px solid #2a3142; box-shadow: inset 0 3px 10px rgba(0,0,0,0.6);
+    min-height: 104px;
+  }
+  .schermo .stato { color: var(--verde-osd); font-weight: bold; font-size: 1.15rem; text-shadow: 0 0 6px rgba(125,255,138,0.5); }
+  .schermo .titolo { margin-top: 6px; font-size: .95rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .schermo .riga { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: .8rem; color: #b9c4dc; }
+  .schermo .barra { flex: 1; height: 6px; background: rgba(255,255,255,0.15); }
+  .schermo .barra div { height: 100%; width: 0; background: var(--giallo); transition: width .5s linear; }
+
+  /* tasti */
+  .tasto-play {
+    width: 168px; height: 168px; border-radius: 50%; border: none; cursor: pointer;
+    background: radial-gradient(circle at 35% 30%, #ffe48f, var(--giallo) 55%, #e5a800);
+    box-shadow: 0 10px 0 #9a7100, 0 16px 30px rgba(0,0,0,0.5), inset 0 -6px 14px rgba(0,0,0,0.12);
+    color: var(--blu-notte); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    font-weight: 900; letter-spacing: 2px; font-size: 1rem; transition: transform .06s, box-shadow .06s;
+  }
+  .tasto-play svg { width: 62px; height: 62px; }
+  .tasto-play:active { transform: translateY(8px); box-shadow: 0 2px 0 #9a7100, 0 6px 14px rgba(0,0,0,0.5); }
+  .tasti-bassi { display: flex; gap: 18px; width: 100%; justify-content: center; }
+  .tasto {
+    flex: 1; max-width: 132px; height: 74px; border-radius: 22px; border: none; cursor: pointer;
+    background: linear-gradient(180deg, #2a5fbf, #0b3d91); color: #fff; font-weight: 800; letter-spacing: 1px; font-size: .9rem;
+    box-shadow: 0 7px 0 #062459, 0 12px 20px rgba(0,0,0,0.45);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;
+    transition: transform .06s, box-shadow .06s;
+  }
+  .tasto svg { width: 28px; height: 28px; }
+  .tasto:active { transform: translateY(6px); box-shadow: 0 1px 0 #062459, 0 4px 10px rgba(0,0,0,0.45); }
+  button:disabled { opacity: .45; }
+  .piede { font-size: .75rem; color: #6f7890; text-align: center; letter-spacing: 2px; }
+  .avviso { display: none; text-align: center; font-size: .9rem; color: #ffd6a0; line-height: 1.4; }
+  .avviso.show { display: block; }
+
+  @media (max-height: 640px) {
+    .telecomando { gap: 14px; padding: 18px 20px 24px; }
+    .tasto-play { width: 136px; height: 136px; } .tasto-play svg { width: 48px; height: 48px; }
+    .tasto { height: 62px; }
+  }
+</style>
+</head>
+<body>
+  <div class="telecomando">
+    <div class="testa">
+      <span class="led" id="led"></span>
+      <span class="marca">TV · AC</span>
+      <span class="conn" id="conn"><i></i><span id="connTxt">…</span></span>
+    </div>
+
+    <div class="schermo">
+      <div class="stato" id="stato">COLLEGAMENTO…</div>
+      <div class="titolo" id="titolo">&nbsp;</div>
+      <div class="riga"><span id="tempo">00:00</span><div class="barra"><div id="barra"></div></div><span id="durata">00:00</span></div>
+    </div>
+
+    <button class="tasto-play" id="btnPlay">
+      <svg viewBox="0 0 24 24" fill="currentColor" id="icoPlay"><path d="M7 4v16l13-8z"/></svg>
+      <span id="lblPlay">PLAY</span>
+    </button>
+
+    <div class="tasti-bassi">
+      <button class="tasto" id="btnInizio">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="5" width="3" height="14"/><path d="M20 5v14L9 12z"/></svg>
+        INIZIO
+      </button>
+    </div>
+
+    <div class="avviso" id="avviso">La TV non risponde.<br>Controlla che sul PC sia aperta la pagina della TV.</div>
+    <div class="piede">TELECOMANDO</div>
+  </div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const fmt = s => { s = Math.max(0, Math.floor(s || 0)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+  let tv = null, collegato = false;
+
+  function lampeggia() { const l = $("led"); l.classList.add("on"); setTimeout(() => l.classList.remove("on"), 180); try { navigator.vibrate && navigator.vibrate(30); } catch {} }
+
+  async function invia(azione) {
+    lampeggia();
+    try { await fetch("/api/cmd?azione=" + azione, { cache: "no-store" }); }
+    catch { $("stato").textContent = "SEGNALE ASSENTE"; }
+    setTimeout(aggiornaStato, 250);
+  }
+  $("btnPlay").onclick = () => invia(tv && tv.playing ? "pausa" : "play");
+  $("btnInizio").onclick = () => invia("inizio");
+
+  function disegna() {
+    const conn = $("conn");
+    conn.classList.toggle("ok", collegato); conn.classList.toggle("ko", !collegato);
+    $("connTxt").textContent = collegato ? "TV collegata" : "TV non trovata";
+    $("avviso").classList.toggle("show", !collegato);
+    $("btnPlay").disabled = $("btnInizio").disabled = !collegato || !tv || !tv.video;
+    if (!collegato || !tv) { $("stato").textContent = "SEGNALE ASSENTE"; $("titolo").innerHTML = "&nbsp;"; return; }
+    if (!tv.video) $("stato").textContent = "NESSUN VIDEO";
+    else if (tv.playing) $("stato").textContent = "▶ IN ONDA";
+    else if (tv.tempo < 0.3) $("stato").textContent = "■ IN ATTESA";
+    else $("stato").textContent = "❚❚ PAUSA";
+    $("titolo").textContent = tv.titolo || " ";
+    $("tempo").textContent = fmt(tv.tempo); $("durata").textContent = fmt(tv.durata);
+    $("barra").style.width = (tv.durata ? Math.min(100, tv.tempo / tv.durata * 100) : 0) + "%";
+    $("icoPlay").innerHTML = tv.playing ? '<rect x="5" y="4" width="5" height="16"/><rect x="14" y="4" width="5" height="16"/>' : '<path d="M7 4v16l13-8z"/>';
+    $("lblPlay").textContent = tv.playing ? "PAUSA" : "PLAY";
+  }
+
+  async function aggiornaStato() {
+    try {
+      const r = await fetch("/api/stato", { cache: "no-store" });
+      const j = await r.json();
+      collegato = j.eta < 5 && !!j.tv;
+      tv = j.tv;
+    } catch { collegato = false; }
+    disegna();
+  }
+  setInterval(aggiornaStato, 800);
+  aggiornaStato();
+
+  // schermo sempre acceso finché il telecomando è aperto
+  let wl = null;
+  async function wake() { try { if ("wakeLock" in navigator && !wl) { wl = await navigator.wakeLock.request("screen"); wl.addEventListener("release", () => wl = null); } } catch {} }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { wake(); aggiornaStato(); } });
+  document.addEventListener("pointerdown", wake, { once: true });
+  document.addEventListener("contextmenu", e => e.preventDefault());
+})();
+</script>
+</body>
+</html>
