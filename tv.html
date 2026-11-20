@@ -353,7 +353,7 @@
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
 
   /* ================= Player ================= */
-  video.loop = true;   // al termine riparte da capo
+  video.loop = false;  // al termine torna alla schermata iniziale in pausa
   let urlCorrente = null, corrente = null;
 
   async function caricaAttivo() {
@@ -444,13 +444,14 @@
 
   video.addEventListener("play", () => { annullaTimerPausa(); osd("▶ PLAY"); aggiornaUi(); });
   video.addEventListener("pause", () => {
+    if (video.ended) return; // ci pensa l'evento "ended"
     if (allInizio()) { clearTimeout(osdTimer); $("osdStato").textContent = ""; }
     else osd("❚❚ PAUSA", false);
     avviaTimerPausa(); aggiornaUi();
   });
   video.addEventListener("timeupdate", aggiornaTempo);
   video.addEventListener("loadedmetadata", aggiornaTempo);
-  video.addEventListener("ended", () => { video.currentTime = 0; video.play().catch(() => {}); });
+  video.addEventListener("ended", tornaInizio);
   video.addEventListener("error", () => { if (video.getAttribute("src")) toast("⚠ QUESTO VIDEO NON SI RIESCE A RIPRODURRE. USA UN FILE MP4.", 6000); });
 
   $("btnPlay").onclick = e => { e.stopPropagation(); playPausa(); };

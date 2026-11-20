@@ -63,7 +63,7 @@ Seconda postazione: una "radio" che fa ascoltare un audio scelto dall'animatore.
 1. Apri `radio.html` e tocca **"Accendi la radio"** (si mette a schermo intero).
 2. Tieni premuto 3 secondi il **logo giallo** in alto a sinistra (o premi **X** se c'è una tastiera) → password (predefinita **`azione2026`**, separata da quella dello Studio Podcast).
 3. Nel pannello: **"+ Carica audio dal dispositivo"** → scegli uno o più file (MP3 consigliato). Seleziona quello da far ascoltare e premi **"Salva e torna alla radio"**.
-4. I ragazzi premono **PLAY / PAUSA** e **INIZIO** (riporta la traccia all'inizio). Quando l'audio finisce **riparte automaticamente da capo**; se resta in pausa per 10 secondi torna da solo all'inizio.
+4. I ragazzi premono **PLAY / PAUSA** e **INIZIO** (riporta la traccia all'inizio). Quando l'audio finisce **torna all'inizio e resta in pausa**; se resta in pausa per 10 secondi torna da solo all'inizio.
 
 I file caricati restano salvati nel browser di quel dispositivo: anche chiudendo la pagina non serve ricaricarli.
 
@@ -87,7 +87,7 @@ Terza postazione: trasmette un video scelto dall'animatore, con lo stile di un v
 - **PLAY / PAUSA** (o clic in un punto qualsiasi dello schermo).
 - **INIZIO**: ferma il video e torna alla schermata iniziale (quella blu con "PREMI ▶ PLAY").
 - Tastiera / telecomando da presentazione: `Spazio`, `Invio`, `→`, `Pagina giù` = play/pausa · `←`, `Pagina su`, `Home`, `R` = inizio.
-- A fine video **riparte da capo**; se resta in pausa **10 secondi** torna da solo all'inizio (con conto alla rovescia a schermo).
+- A fine video **torna alla schermata iniziale in pausa**; se resta in pausa **10 secondi** torna da solo all'inizio (con conto alla rovescia a schermo).
 - Mentre il video va, comandi e cursore spariscono dopo 3 secondi e ricompaiono muovendo il mouse.
 
 ## Impostazioni (pannello animatore)

@@ -418,7 +418,7 @@
 
   /* ================= Player ================= */
   const audio = new Audio();
-  audio.loop = true;            // al termine riparte da capo
+  audio.loop = false;           // al termine torna all'inizio in pausa
   audio.preload = "auto";
   audio.setAttribute("playsinline", "");
   let urlCorrente = null, branoCorrente = null;
@@ -504,8 +504,8 @@
   audio.addEventListener("timeupdate", aggiornaTempo);
   audio.addEventListener("loadedmetadata", aggiornaTempo);
   audio.addEventListener("error", () => { if (audio.getAttribute("src")) toast("⚠️ Questo audio non si riesce a riprodurre. Prova un file MP3.", 5000); });
-  // rete di sicurezza: se per qualche motivo il loop non scatta, riparte da capo
-  audio.addEventListener("ended", () => { audio.currentTime = 0; audio.play().catch(() => {}); });
+  // a fine audio: torna all'inizio e resta in pausa
+  audio.addEventListener("ended", () => { audio.pause(); audio.currentTime = 0; annullaTimerPausa(); aggiornaTempo(); aggiornaUi(); });
 
   $("btnPlay").onclick = async () => {
     if (!branoCorrente) return;

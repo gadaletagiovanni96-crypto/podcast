@@ -839,7 +839,7 @@
   $("btnPlay").onclick = () => { if (audio.paused) audio.play(); else audio.pause(); };
   audio.addEventListener("play", () => $("icoPlay").innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>');
   audio.addEventListener("pause", () => $("icoPlay").innerHTML = '<path d="M8 5v14l11-7z"/>');
-  audio.addEventListener("ended", () => { $("icoPlay").innerHTML = '<path d="M8 5v14l11-7z"/>'; });
+  audio.addEventListener("ended", () => { $("icoPlay").innerHTML = '<path d="M8 5v14l11-7z"/>'; audio.currentTime = 0; $("playProg").style.width = "0"; });
   audio.addEventListener("timeupdate", () => {
     const tot = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : tempoAccumulato;
     $("playProg").style.width = Math.min(100, audio.currentTime / tot * 100) + "%";
