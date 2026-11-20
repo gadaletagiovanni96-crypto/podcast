@@ -79,7 +79,7 @@ Terza postazione: trasmette un video scelto dall'animatore, con lo stile di un v
 
 ## Comandi per i ragazzi
 - **PLAY / PAUSA** (o clic in un punto qualsiasi dello schermo).
-- **INIZIO**: riporta il video all'inizio.
+- **INIZIO**: ferma il video e torna alla schermata iniziale (quella blu con "PREMI ▶ PLAY").
 - Tastiera / telecomando da presentazione: `Spazio`, `Invio`, `→`, `Pagina giù` = play/pausa · `←`, `Pagina su`, `Home`, `R` = inizio.
 - A fine video **riparte da capo**; se resta in pausa **10 secondi** torna da solo all'inizio (con conto alla rovescia a schermo).
 - Mentre il video va, comandi e cursore spariscono dopo 3 secondi e ricompaiono muovendo il mouse.

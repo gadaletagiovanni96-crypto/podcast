@@ -431,12 +431,13 @@
   }
   function tornaInizio() {
     if (!corrente) return;
-    const suonava = !video.paused;
+    // ferma il video e torna alla schermata iniziale (quella con PREMI PLAY)
     annullaTimerPausa();
     neve(350);
-    video.currentTime = 0; aggiornaTempo();
-    if (suonava) osd("⏮ INIZIO"); else { $("osdStato").textContent = ""; }
-    aggiornaUi();
+    video.currentTime = 0;
+    video.pause();
+    clearTimeout(osdTimer); $("osdStato").textContent = "";
+    aggiornaTempo(); aggiornaUi();
   }
   async function playPausa() {
     if (!corrente) { toast("NESSUN VIDEO: CHIAMA L'ANIMATORE"); return; }
@@ -447,7 +448,11 @@
   }
 
   video.addEventListener("play", () => { annullaTimerPausa(); osd("▶ PLAY"); aggiornaUi(); });
-  video.addEventListener("pause", () => { osd("❚❚ PAUSA", false); avviaTimerPausa(); aggiornaUi(); });
+  video.addEventListener("pause", () => {
+    if (allInizio()) { clearTimeout(osdTimer); $("osdStato").textContent = ""; }
+    else osd("❚❚ PAUSA", false);
+    avviaTimerPausa(); aggiornaUi();
+  });
   video.addEventListener("timeupdate", aggiornaTempo);
   video.addEventListener("loadedmetadata", aggiornaTempo);
   video.addEventListener("ended", () => { video.currentTime = 0; video.play().catch(() => {}); });
