@@ -253,6 +253,8 @@
     .play { width: 112px; height: 112px; }
     .griglia { grid-template-columns: 1fr; }
   }
+
+  #ovPassword { z-index: 45; }
 </style>
 </head>
 <body>
@@ -575,8 +577,14 @@
     if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
     else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
   }
+  // Su tablet la tastiera a schermo può far uscire dallo schermo intero:
+  // mentre si scrive (password, nomi…) non mostriamo l'avviso, e lo ricontrolliamo dopo.
+  const inFsX = () => inFs();
+  const staScrivendo = () => $("ovPassword").classList.contains("show") || /^(INPUT|TEXTAREA|SELECT)$/.test((document.activeElement || {}).tagName || "");
+  document.addEventListener("focusout", () => setTimeout(onFs, 400));
+
   function onFs() {
-    const mostra = fsSupportato && avviato && !inFs() && !sbloccato;
+    const mostra = fsSupportato && avviato && !inFs() && !sbloccato && !staScrivendo();
     $("ovFullscreen").classList.toggle("show", mostra);
   }
   document.addEventListener("fullscreenchange", onFs);
@@ -603,7 +611,7 @@
     $("ovPassword").classList.add("show");
     setTimeout(() => $("inPassword").focus(), 60);
   }
-  $("btnPwdAnnulla").onclick = () => { $("ovPassword").classList.remove("show"); pwdCb = null; };
+  $("btnPwdAnnulla").onclick = async () => { $("ovPassword").classList.remove("show"); if (!sbloccato && !inFsX()) { await entraFs(); } onFs(); pwdCb = null; };
   $("btnPwdOk").onclick = () => {
     if ($("inPassword").value === cfg.password) {
       $("ovPassword").classList.remove("show"); const cb = pwdCb; pwdCb = null; cb && cb();
