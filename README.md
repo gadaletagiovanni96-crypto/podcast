@@ -46,3 +46,22 @@ Per chiudere in modalità chiosco: `Alt+F4`.
 - Usa un **microfono USB** o delle cuffie con microfono: la qualità migliora tantissimo.
 - Fai una registrazione di prova prima dell'apertura della mostra.
 - A fine giornata scarica il registro CSV dal pannello animatore.
+
+---
+
+# 📻 Radio AC (`radio.html`)
+
+Seconda postazione: una "radio" che fa ascoltare un audio scelto dall'animatore. Ottimizzata per **smartphone e tablet** (verticale e orizzontale), funziona anche su PC.
+
+## Come si usa
+1. Apri `radio.html` e tocca **"Accendi la radio"** (si mette a schermo intero).
+2. Tocca il **lucchetto** in alto a destra → password (predefinita **`azione2026`**, separata da quella dello Studio Podcast).
+3. Nel pannello: **"+ Carica audio dal dispositivo"** → scegli uno o più file (MP3 consigliato). Seleziona quello da far ascoltare e premi **"Salva e torna alla radio"**.
+4. I ragazzi premono **PLAY / PAUSA**. Quando l'audio finisce **riparte automaticamente da capo**.
+
+I file caricati restano salvati nel browser di quel dispositivo: anche chiudendo la pagina non serve ricaricarli.
+
+## Note per i telefoni
+- **Android (Chrome)**: schermo intero e blocco funzionano.
+- **iPhone (Safari)**: Apple non permette lo schermo intero alle pagine web; usa *Condividi → Aggiungi alla schermata Home* e attiva *Impostazioni → Accessibilità → Accesso guidato* per bloccare il telefono sull'app. Il volume si regola con i tasti del telefono.
+- Per aprire la pagina su un telefono la cosa più semplice è pubblicarla online (es. GitHub Pages) e aprire il link.

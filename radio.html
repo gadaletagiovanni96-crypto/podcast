@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#061a3a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Radio AC</title>
+<style>
+  :root {
+    --blu-notte: #061a3a;
+    --blu: #0b3d91;
+    --blu-chiaro: #1e63d6;
+    --giallo: #ffc72c;
+    --giallo-chiaro: #ffe08a;
+    --bianco: #ffffff;
+    --rosso: #ff4d5e;
+    --testo-soft: rgba(255,255,255,0.75);
+    --vetro: rgba(255,255,255,0.08);
+    --vetro-bordo: rgba(255,255,255,0.16);
+    --sa-top: env(safe-area-inset-top, 0px);
+    --sa-bottom: env(safe-area-inset-bottom, 0px);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI", "Nunito", -apple-system, "Helvetica Neue", Arial, sans-serif;
+    color: var(--bianco);
+    background: var(--blu-notte);
+    background-image:
+      radial-gradient(circle at 20% 10%, rgba(30,99,214,0.6), transparent 50%),
+      radial-gradient(circle at 80% 95%, rgba(255,199,44,0.22), transparent 45%),
+      linear-gradient(170deg, #0b3d91 0%, #061a3a 75%);
+    overflow: hidden;
+    user-select: none; -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+    overscroll-behavior: none;
+  }
+  input { user-select: text; -webkit-user-select: text; }
+  button { font-family: inherit; touch-action: manipulation; }
+
+  .app {
+    height: 100dvh; min-height: 100%;
+    display: flex; flex-direction: column; align-items: center;
+    padding: calc(14px + var(--sa-top)) 16px calc(16px + var(--sa-bottom));
+  }
+
+  /* intestazione */
+  header { width: 100%; max-width: 560px; display: flex; align-items: center; justify-content: space-between; gap: 10px; flex: none; }
+  .brand { display: flex; align-items: center; gap: 10px; min-width: 0; }
+  .brand-logo { width: 42px; height: 42px; border-radius: 13px; background: var(--giallo); display: grid; place-items: center; flex: none; box-shadow: 0 6px 18px rgba(255,199,44,0.35); }
+  .brand-logo svg { width: 24px; height: 24px; }
+  .brand h1 { font-size: 1.15rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .brand p { font-size: .82rem; color: var(--giallo); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .icon-btn { width: 42px; height: 42px; flex: none; border-radius: 50%; background: var(--vetro); border: 1px solid var(--vetro-bordo); color: var(--testo-soft); display: grid; place-items: center; cursor: pointer; }
+  .icon-btn svg { width: 19px; height: 19px; }
+
+  /* ===== RADIO ===== */
+  .radio-area { flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; min-height: 0; padding-top: 34px; }
+  .radio {
+    position: relative; width: 100%; max-width: 440px;
+    background: linear-gradient(170deg, #1552b8 0%, #0b3d91 55%, #08306f 100%);
+    border-radius: 34px; padding: 20px 20px 22px;
+    box-shadow: 0 30px 70px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -6px 0 rgba(0,0,0,0.25);
+    border: 3px solid #ffc72c;
+  }
+  /* antenna */
+  .antenna { position: absolute; right: 54px; top: -78px; width: 6px; height: 96px; background: linear-gradient(90deg, #c9ced8, #f3f5f9, #9aa1ad); border-radius: 3px; transform: rotate(18deg); transform-origin: bottom center; z-index: -1; }
+  .antenna::before { content: ""; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); width: 14px; height: 14px; border-radius: 50%; background: var(--giallo); box-shadow: 0 0 0 3px rgba(255,199,44,0.25); }
+  .radio.on .antenna::before { animation: segnale 1.6s ease-out infinite; }
+  @keyframes segnale { 0%{ box-shadow: 0 0 0 0 rgba(255,199,44,0.7) } 100%{ box-shadow: 0 0 0 22px rgba(255,199,44,0) } }
+  .maniglia { position: absolute; left: 50%; top: -22px; transform: translateX(-50%); width: 46%; height: 26px; border: 6px solid #ffc72c; border-bottom: none; border-radius: 20px 20px 0 0; z-index: -1; }
+
+  .riga-top { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .on-air {
+    display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 10px;
+    background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15);
+    font-weight: 800; font-size: .8rem; letter-spacing: 2px; color: rgba(255,255,255,0.35);
+    transition: all .3s;
+  }
+  .on-air .led { width: 10px; height: 10px; border-radius: 50%; background: #5a2630; transition: all .3s; }
+  .radio.on .on-air { color: #fff; border-color: rgba(255,77,94,0.6); background: rgba(255,77,94,0.18); }
+  .radio.on .on-air .led { background: var(--rosso); box-shadow: 0 0 12px var(--rosso); animation: lampeggia 1.2s infinite; }
+  @keyframes lampeggia { 50% { opacity: .35 } }
+  .marca { font-weight: 900; font-style: italic; letter-spacing: 1px; color: var(--giallo); font-size: 1.05rem; }
+
+  /* display */
+  .display {
+    background: linear-gradient(180deg, #fff3c4, #ffe08a);
+    border-radius: 16px; padding: 12px 14px 10px; color: var(--blu-notte);
+    box-shadow: inset 0 3px 10px rgba(0,0,0,0.25), 0 0 0 4px rgba(0,0,0,0.25);
+    position: relative; overflow: hidden;
+  }
+  .radio.on .display { box-shadow: inset 0 3px 10px rgba(0,0,0,0.2), 0 0 0 4px rgba(0,0,0,0.25), 0 0 30px rgba(255,199,44,0.45); }
+  .scala { position: relative; height: 40px; }
+  .scala .numeri { display: flex; justify-content: space-between; font-size: .72rem; font-weight: 800; opacity: .75; font-variant-numeric: tabular-nums; }
+  .scala .tacche { position: absolute; left: 0; right: 0; bottom: 4px; height: 14px;
+    background: repeating-linear-gradient(90deg, rgba(6,26,58,0.6) 0 2px, transparent 2px 10px);
+    -webkit-mask: linear-gradient(#000 0 0); }
+  .scala .tacche::after { content: ""; position: absolute; inset: 0; background: repeating-linear-gradient(90deg, transparent 0 48px, rgba(6,26,58,0.85) 48px 50px); }
+  .ago { position: absolute; top: -4px; bottom: -2px; width: 3px; left: 0; background: var(--rosso); border-radius: 2px; box-shadow: 0 0 6px rgba(255,77,94,0.7); transition: left .4s linear; }
+  .titolo-brano { margin-top: 8px; height: 26px; overflow: hidden; position: relative; font-weight: 800; font-size: 1.05rem; white-space: nowrap; }
+  .titolo-brano span { display: inline-block; padding-left: 0; }
+  .titolo-brano.scorre span { animation: scorri 12s linear infinite; padding-left: 100%; }
+  @keyframes scorri { to { transform: translateX(-100%); } }
+  .tempi { display: flex; justify-content: space-between; font-size: .8rem; font-weight: 700; opacity: .75; font-variant-numeric: tabular-nums; margin-top: 2px; }
+
+  /* altoparlante con equalizzatore */
+  .speaker {
+    margin: 18px 0 18px; height: 120px; border-radius: 18px; position: relative; overflow: hidden;
+    background-color: #072a63;
+    background-image: radial-gradient(circle, rgba(0,0,0,0.55) 2.4px, transparent 2.8px);
+    background-size: 11px 11px;
+    box-shadow: inset 0 4px 14px rgba(0,0,0,0.45);
+    display: flex; align-items: flex-end; justify-content: center; gap: 5px; padding: 10px 14px;
+  }
+  .speaker i {
+    flex: 1; max-width: 16px; height: 6%; border-radius: 5px 5px 2px 2px;
+    background: linear-gradient(0deg, var(--giallo), #ffe9a6);
+    opacity: .25; transition: height .08s linear, opacity .3s;
+  }
+  .radio.on .speaker i { opacity: .95; }
+
+  /* comandi */
+  .comandi { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .manopola { width: 56px; height: 56px; border-radius: 50%; flex: none;
+    background: conic-gradient(from 0deg, #e8eaef, #9aa1ad, #e8eaef, #9aa1ad, #e8eaef);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.4), inset 0 0 0 6px rgba(255,255,255,0.25);
+    position: relative; transition: transform .6s ease;
+  }
+  .manopola::after { content: ""; position: absolute; top: 7px; left: 50%; width: 4px; height: 14px; margin-left: -2px; border-radius: 2px; background: var(--blu-notte); }
+  .play {
+    width: 128px; height: 128px; border-radius: 50%; border: none; cursor: pointer; flex: none;
+    background: radial-gradient(circle at 35% 30%, #ffe48f, var(--giallo) 55%, #e9a800);
+    box-shadow: 0 14px 34px rgba(255,199,44,0.45), inset 0 -6px 14px rgba(0,0,0,0.15), 0 0 0 7px rgba(0,0,0,0.25);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+    color: var(--blu-notte); font-weight: 900; font-size: .85rem; letter-spacing: 1.5px;
+    transition: transform .12s;
+  }
+  .play:active { transform: scale(0.94); }
+  .play svg { width: 54px; height: 54px; }
+  .play:disabled { filter: grayscale(.8); opacity: .55; }
+
+  .avviso-vuoto { text-align: center; margin-top: 14px; color: var(--giallo-chiaro); font-weight: 700; font-size: .95rem; display: none; }
+  .avviso-vuoto.show { display: block; }
+  .suggerimento { text-align: center; color: var(--testo-soft); font-size: .95rem; margin-top: 18px; flex: none; min-height: 1.3em; }
+
+  /* schermata di avvio */
+  .avvio {
+    position: fixed; inset: 0; z-index: 20; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    padding: 30px 24px; background: inherit; background-color: var(--blu-notte);
+    background-image: radial-gradient(circle at 20% 10%, rgba(30,99,214,0.6), transparent 50%), linear-gradient(170deg, #0b3d91 0%, #061a3a 75%);
+    cursor: pointer;
+  }
+  .avvio.nascosto { display: none; }
+  .avvio-icona { width: 120px; height: 120px; border-radius: 34px; background: var(--giallo); display: grid; place-items: center; margin-bottom: 26px; box-shadow: 0 18px 50px rgba(255,199,44,0.4); animation: galleggia 4s ease-in-out infinite; }
+  .avvio-icona svg { width: 66px; height: 66px; }
+  @keyframes galleggia { 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(-10px) } }
+  .avvio h2 { font-size: clamp(1.7rem, 7vw, 2.6rem); font-weight: 800; line-height: 1.15; }
+  .avvio h2 em { font-style: normal; color: var(--giallo); }
+  .avvio p { color: var(--testo-soft); margin-top: 10px; font-size: 1.05rem; }
+
+  .btn { border: none; cursor: pointer; border-radius: 16px; padding: 15px 26px; font-size: 1.05rem; font-weight: 800; display: inline-flex; align-items: center; justify-content: center; gap: 10px; transition: transform .12s; }
+  .btn:active { transform: scale(0.96); }
+  .btn-giallo { background: var(--giallo); color: var(--blu-notte); box-shadow: 0 10px 26px rgba(255,199,44,0.35); }
+  .btn-vetro { background: var(--vetro); color: var(--bianco); border: 1px solid var(--vetro-bordo); }
+  .btn-rosso { background: var(--rosso); color: var(--bianco); }
+  .btn-piccolo { padding: 11px 18px; font-size: .95rem; border-radius: 13px; }
+
+  /* overlay */
+  .overlay { position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center; background: rgba(3,12,30,0.85); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); padding: calc(16px + var(--sa-top)) 14px calc(16px + var(--sa-bottom)); }
+  .overlay.show { display: flex; }
+  .modal { background: linear-gradient(160deg, #0f4aa8, #0a2a63); border: 1px solid var(--vetro-bordo); border-radius: 24px; padding: 26px 22px; width: min(460px, 100%); max-height: 100%; overflow: auto; text-align: center; box-shadow: 0 30px 80px rgba(0,0,0,0.5); }
+  .modal.largo { width: min(620px, 100%); text-align: left; }
+  .modal h3 { font-size: 1.35rem; margin-bottom: 6px; }
+  .modal p { color: var(--testo-soft); margin-bottom: 16px; font-size: .95rem; }
+  .modal .azioni { display: flex; gap: 10px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+  .shake { animation: shake .4s; }
+  @keyframes shake { 20%,60%{ transform: translateX(-10px) } 40%,80%{ transform: translateX(10px) } }
+  .campo { width: 100%; padding: 13px 16px; border-radius: 13px; border: 2px solid var(--vetro-bordo); background: rgba(255,255,255,0.07); color: var(--bianco); font-size: 16px; font-family: inherit; outline: none; }
+  .campo:focus { border-color: var(--giallo); }
+  .errore { color: var(--rosso); font-weight: 700; margin-top: 8px; min-height: 1.3em; }
+  .sez { font-weight: 800; color: var(--giallo); margin: 18px 0 8px; }
+  .libreria { display: flex; flex-direction: column; gap: 8px; }
+  .brano { display: flex; align-items: center; gap: 10px; background: rgba(0,0,0,0.2); border: 2px solid transparent; border-radius: 14px; padding: 10px 12px; cursor: pointer; }
+  .brano.attivo { border-color: var(--giallo); background: rgba(255,199,44,0.12); }
+  .brano .radio-dot { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--testo-soft); flex: none; display: grid; place-items: center; }
+  .brano.attivo .radio-dot { border-color: var(--giallo); }
+  .brano.attivo .radio-dot::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--giallo); }
+  .brano .info { flex: 1; min-width: 0; }
+  .brano .info b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: .95rem; }
+  .brano .info small { color: var(--testo-soft); font-size: .8rem; }
+  .brano .del { width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(255,77,94,0.18); color: #ffb3bb; font-size: 1.1rem; cursor: pointer; flex: none; }
+  .vuota { color: var(--testo-soft); font-size: .9rem; padding: 10px 0; }
+  .carica { display: block; text-align: center; border: 2px dashed var(--vetro-bordo); color: var(--giallo); padding: 14px; border-radius: 14px; font-weight: 800; cursor: pointer; margin-top: 10px; }
+  .carica input { display: none; }
+  .griglia { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .griglia label { display: block; font-weight: 700; font-size: .9rem; margin-bottom: 6px; }
+  .griglia .full { grid-column: 1 / -1; }
+  input[type=range] { width: 100%; accent-color: var(--giallo); height: 30px; }
+  select.campo option { color: #000; }
+
+  .toast { position: fixed; left: 50%; bottom: calc(24px + var(--sa-bottom)); transform: translateX(-50%) translateY(150px); z-index: 60; background: #fff; color: var(--blu-notte); padding: 12px 20px; border-radius: 14px; font-weight: 700; box-shadow: 0 10px 40px rgba(0,0,0,0.35); transition: transform .3s; width: max-content; max-width: 90vw; text-align: center; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* telefoni bassi o in orizzontale */
+  @media (max-height: 700px) {
+    .radio-area { padding-top: 26px; }
+    .speaker { height: 80px; margin: 12px 0; }
+    .play { width: 104px; height: 104px; }
+    .play svg { width: 44px; height: 44px; }
+  }
+  @media (orientation: landscape) and (max-height: 520px) {
+    .app { padding-top: calc(8px + var(--sa-top)); }
+    header { max-width: 820px; }
+    .radio-area { padding-top: 6px; }
+    .radio { max-width: 760px; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto 1fr; column-gap: 18px; padding: 14px 18px; }
+    .antenna, .maniglia { display: none; }
+    .riga-top { grid-column: 1 / -1; margin-bottom: 8px; }
+    .display { grid-column: 1; }
+    .speaker { grid-column: 1; height: auto; min-height: 60px; margin: 10px 0 0; }
+    .comandi { grid-column: 2; grid-row: 2 / 4; justify-content: space-around; }
+    .avviso-vuoto { grid-column: 1 / -1; }
+    .suggerimento { display: none; }
+    .griglia { grid-template-columns: 1fr 1fr; }
+  }
+  @media (max-width: 380px) {
+    .manopola { width: 46px; height: 46px; }
+    .play { width: 112px; height: 112px; }
+    .griglia { grid-template-columns: 1fr; }
+  }
+  @media (min-width: 900px) and (min-height: 800px) {
+    .radio { max-width: 520px; padding: 26px 28px 28px; }
+    .speaker { height: 170px; }
+    .play { width: 150px; height: 150px; }
+    .play svg { width: 62px; height: 62px; }
+    .manopola { width: 70px; height: 70px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <div class="brand">
+      <div class="brand-logo">
+        <svg viewBox="0 0 24 24" fill="#061a3a"><path d="M20 6H8.3l8.26-3.34L15.88 1 3.24 6.15A2 2 0 0 0 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2Zm0 2v3h-2V9h-2v2H4V8h16ZM7 19a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/></svg>
+      </div>
+      <div style="min-width:0">
+        <h1 id="txtTitolo">Radio AC</h1>
+        <p id="txtSottotitolo">Azione Cattolica</p>
+      </div>
+    </div>
+    <button class="icon-btn" id="btnLucchetto" aria-label="Area riservata">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    </button>
+  </header>
+
+  <div class="radio-area">
+    <div class="radio" id="radio">
+      <div class="maniglia"></div>
+      <div class="antenna"></div>
+      <div class="riga-top">
+        <div class="on-air"><span class="led"></span>ON AIR</div>
+        <div class="marca" id="txtMarca">FM · AC</div>
+      </div>
+      <div class="display">
+        <div class="scala">
+          <div class="numeri"><span>88</span><span>92</span><span>96</span><span>100</span><span>104</span><span>108</span></div>
+          <div class="tacche"></div>
+          <div class="ago" id="ago"></div>
+        </div>
+        <div class="titolo-brano" id="titoloBrano"><span id="titoloBranoTxt">Nessun audio</span></div>
+        <div class="tempi"><span id="tempoOra">00:00</span><span id="tempoTot">00:00</span></div>
+      </div>
+      <div class="speaker" id="speaker"></div>
+      <div class="comandi">
+        <div class="manopola" id="manopolaSx"></div>
+        <button class="play" id="btnPlay" aria-label="Play">
+          <svg viewBox="0 0 24 24" fill="#061a3a" id="icoPlay"><path d="M8 5v14l11-7z"/></svg>
+          <span id="lblPlay">PLAY</span>
+        </button>
+        <div class="manopola" id="manopolaDx"></div>
+      </div>
+      <div class="avviso-vuoto" id="avvisoVuoto">📻 Nessun audio scelto: chiedi all'animatore</div>
+    </div>
+  </div>
+  <div class="suggerimento" id="suggerimento">Premi PLAY per accendere la radio 🎧</div>
+</div>
+
+<!-- Avvio -->
+<div class="avvio" id="avvio">
+  <div class="avvio-icona">
+    <svg viewBox="0 0 24 24" fill="#061a3a"><path d="M20 6H8.3l8.26-3.34L15.88 1 3.24 6.15A2 2 0 0 0 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2Zm0 2v3h-2V9h-2v2H4V8h16ZM7 19a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/></svg>
+  </div>
+  <h2>Sintonizzati sulla <em>nostra radio</em></h2>
+  <p>Tocca lo schermo per accenderla</p>
+  <div style="margin-top:26px"><button class="btn btn-giallo" id="btnAvvia">Accendi la radio ▶</button></div>
+</div>
+
+<!-- Password -->
+<div class="overlay" id="ovPassword">
+  <div class="modal" id="modalPassword">
+    <h3>🔒 Area riservata</h3>
+    <p>Inserisci la password dell'animatore.</p>
+    <input type="password" class="campo" id="inPassword" placeholder="Password" autocomplete="off" style="text-align:center">
+    <div class="errore" id="errPassword"></div>
+    <div class="azioni">
+      <button class="btn btn-vetro btn-piccolo" id="btnPwdAnnulla">Annulla</button>
+      <button class="btn btn-giallo btn-piccolo" id="btnPwdOk">Conferma</button>
+    </div>
+  </div>
+</div>
+
+<!-- Uscita dal fullscreen -->
+<div class="overlay" id="ovFullscreen">
+  <div class="modal">
+    <h3>La radio è uscita dallo schermo intero</h3>
+    <p>Tocca il pulsante per tornare alla radio.</p>
+    <div class="azioni"><button class="btn btn-giallo" id="btnTornaFs">Torna alla radio</button></div>
+    <div class="azioni"><button class="btn btn-vetro btn-piccolo" id="btnFsAdmin">🔒 Sono l'animatore</button></div>
+  </div>
+</div>
+
+<!-- Pannello animatore -->
+<div class="overlay" id="ovAdmin">
+  <div class="modal largo">
+    <h3>⚙️ Pannello animatore</h3>
+    <p>Scegli quale audio far ascoltare. I file caricati restano salvati in questo browser anche se chiudi la pagina.</p>
+
+    <div class="sez">🎵 Audio disponibili</div>
+    <div class="libreria" id="libreria"></div>
+    <label class="carica">+ Carica audio dal dispositivo
+      <input type="file" id="inFile" accept="audio/*,.mp3,.wav,.m4a,.ogg,.webm,.aac" multiple>
+    </label>
+
+    <div class="sez">🛠️ Impostazioni</div>
+    <div class="griglia">
+      <div><label>Titolo in alto</label><input class="campo" id="setTitolo"></div>
+      <div><label>Sottotitolo</label><input class="campo" id="setSottotitolo"></div>
+      <div class="full"><label>Volume: <span id="lblVolume">100</span>%</label><input type="range" id="setVolume" min="10" max="100" step="5"></div>
+      <div class="full"><label>Nuova password <small style="font-weight:400;color:var(--testo-soft)">(lascia vuoto per non cambiarla)</small></label><input class="campo" type="password" id="setPassword" autocomplete="new-password"></div>
+    </div>
+
+    <div class="azioni" style="justify-content:space-between;margin-top:24px">
+      <button class="btn btn-rosso btn-piccolo" id="btnEsci">Esci dallo schermo intero</button>
+      <button class="btn btn-giallo btn-piccolo" id="btnSalvaImp">Salva e torna alla radio</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const fmt = s => { s = Math.max(0, Math.floor(s || 0)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+
+  /* ================= Impostazioni ================= */
+  const DEFAULT = { password: "azione2026", titolo: "Radio AC", sottotitolo: "Azione Cattolica", volume: 100, attivo: null };
+  const ls = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  };
+  let cfg = Object.assign({}, DEFAULT, ls.get("radio_cfg", {}));
+  const salvaCfg = () => ls.set("radio_cfg", cfg);
+
+  function applicaCfg() {
+    $("txtTitolo").textContent = cfg.titolo;
+    $("txtSottotitolo").textContent = cfg.sottotitolo;
+    document.title = cfg.titolo;
+    audio.volume = cfg.volume / 100;
+  }
+
+  function toast(msg, ms = 3000) {
+    const t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), ms);
+  }
+
+  /* ================= Archivio audio (IndexedDB) ================= */
+  const DB = {
+    db: null,
+    apri() {
+      return new Promise((ok, ko) => {
+        if (this.db) return ok(this.db);
+        const r = indexedDB.open("radio_ac", 1);
+        r.onupgradeneeded = () => r.result.createObjectStore("brani", { keyPath: "id" });
+        r.onsuccess = () => { this.db = r.result; ok(this.db); };
+        r.onerror = () => ko(r.error);
+      });
+    },
+    async tx(mode, fn) {
+      const db = await this.apri();
+      return new Promise((ok, ko) => {
+        const t = db.transaction("brani", mode); const s = t.objectStore("brani");
+        const req = fn(s);
+        t.oncomplete = () => ok(req && req.result); t.onerror = () => ko(t.error);
+      });
+    },
+    tutti() { return this.tx("readonly", s => s.getAll()); },
+    get(id) { return this.tx("readonly", s => s.get(id)); },
+    put(b) { return this.tx("readwrite", s => s.put(b)); },
+    del(id) { return this.tx("readwrite", s => s.delete(id)); }
+  };
+
+  /* ================= Player ================= */
+  const audio = new Audio();
+  audio.loop = true;            // al termine riparte da capo
+  audio.preload = "auto";
+  audio.setAttribute("playsinline", "");
+  let urlCorrente = null, branoCorrente = null;
+
+  async function caricaAttivo() {
+    audio.pause();
+    if (urlCorrente) { URL.revokeObjectURL(urlCorrente); urlCorrente = null; }
+    branoCorrente = cfg.attivo ? await DB.get(cfg.attivo).catch(() => null) : null;
+    if (!branoCorrente) {
+      const lista = await DB.tutti().catch(() => []);
+      if (lista.length) { branoCorrente = lista[0]; cfg.attivo = branoCorrente.id; salvaCfg(); }
+    }
+    if (branoCorrente) {
+      urlCorrente = URL.createObjectURL(branoCorrente.blob);
+      audio.src = urlCorrente;
+      audio.load();
+      impostaTitolo(branoCorrente.nome);
+      $("btnPlay").disabled = false;
+      $("avvisoVuoto").classList.remove("show");
+    } else {
+      audio.removeAttribute("src");
+      impostaTitolo("Nessun audio");
+      $("btnPlay").disabled = true;
+      $("avvisoVuoto").classList.add("show");
+    }
+    aggiornaUi(); aggiornaTempo();
+  }
+
+  function impostaTitolo(t) {
+    $("titoloBranoTxt").textContent = t;
+    const box = $("titoloBrano");
+    box.classList.remove("scorre");
+    requestAnimationFrame(() => { if ($("titoloBranoTxt").scrollWidth > box.clientWidth) box.classList.add("scorre"); });
+  }
+
+  function aggiornaUi() {
+    const suona = !audio.paused;
+    $("radio").classList.toggle("on", suona);
+    $("icoPlay").innerHTML = suona
+      ? '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>'
+      : '<path d="M8 5v14l11-7z"/>';
+    $("lblPlay").textContent = suona ? "PAUSA" : "PLAY";
+    $("btnPlay").setAttribute("aria-label", suona ? "Pausa" : "Play");
+    $("suggerimento").textContent = !branoCorrente ? "" : suona ? "Buon ascolto! Premi PAUSA per fermare ⏸" : "Premi PLAY per accendere la radio 🎧";
+  }
+  function aggiornaTempo() {
+    const tot = isFinite(audio.duration) ? audio.duration : 0;
+    $("tempoOra").textContent = fmt(audio.currentTime);
+    $("tempoTot").textContent = fmt(tot);
+    const p = tot ? audio.currentTime / tot : 0;
+    $("ago").style.left = `calc(${(p * 100).toFixed(2)}% - ${(p * 3).toFixed(2)}px)`;
+  }
+  audio.addEventListener("play", aggiornaUi);
+  audio.addEventListener("pause", aggiornaUi);
+  audio.addEventListener("timeupdate", aggiornaTempo);
+  audio.addEventListener("loadedmetadata", aggiornaTempo);
+  audio.addEventListener("error", () => { if (audio.getAttribute("src")) toast("⚠️ Questo audio non si riesce a riprodurre. Prova un file MP3.", 5000); });
+  // rete di sicurezza: se per qualche motivo il loop non scatta, riparte da capo
+  audio.addEventListener("ended", () => { audio.currentTime = 0; audio.play().catch(() => {}); });
+
+  $("btnPlay").onclick = async () => {
+    if (!branoCorrente) return;
+    preparaAnalisi();
+    if (audio.paused) { try { await audio.play(); } catch { toast("Tocca di nuovo PLAY"); } }
+    else audio.pause();
+  };
+
+  /* ================= Equalizzatore ================= */
+  const speaker = $("speaker");
+  const NBARRE = 18;
+  for (let i = 0; i < NBARRE; i++) speaker.appendChild(document.createElement("i"));
+  const barre = [...speaker.children];
+  let actx = null, analyser = null, freq = null, analisiOk = false;
+  function preparaAnalisi() {
+    if (analisiOk) { if (actx && actx.state === "suspended") actx.resume(); return; }
+    analisiOk = true;
+    try {
+      actx = new (window.AudioContext || window.webkitAudioContext)();
+      const src = actx.createMediaElementSource(audio);
+      analyser = actx.createAnalyser(); analyser.fftSize = 128; analyser.smoothingTimeConstant = 0.75;
+      src.connect(analyser); analyser.connect(actx.destination);
+      freq = new Uint8Array(analyser.frequencyBinCount);
+    } catch { analyser = null; }
+  }
+  let t0 = 0;
+  function animazione(t) {
+    const suona = !audio.paused;
+    if (analyser && suona) {
+      analyser.getByteFrequencyData(freq);
+      for (let i = 0; i < NBARRE; i++) {
+        const idx = Math.floor(Math.pow(i / NBARRE, 1.5) * (freq.length * 0.8));
+        const v = freq[idx] / 255;
+        barre[i].style.height = Math.max(6, v * 100) + "%";
+      }
+    } else if (suona) {
+      // animazione simulata se l'analisi non è disponibile
+      for (let i = 0; i < NBARRE; i++) barre[i].style.height = (20 + 60 * Math.abs(Math.sin(t / 260 + i * 0.7) * Math.cos(t / 410 + i))) + "%";
+    } else {
+      for (let i = 0; i < NBARRE; i++) barre[i].style.height = "6%";
+    }
+    if (suona) {
+      const ang = (t / 40) % 360;
+      $("manopolaSx").style.transform = `rotate(${Math.sin(t / 1500) * 40}deg)`;
+      $("manopolaDx").style.transform = `rotate(${-Math.sin(t / 1800) * 40}deg)`;
+    }
+    requestAnimationFrame(animazione);
+  }
+  requestAnimationFrame(animazione);
+
+  /* ================= Fullscreen + blocco ================= */
+  let sbloccato = false, avviato = false;
+  const inFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const fsSupportato = !!(document.documentElement.requestFullscreen || document.documentElement.webkitRequestFullscreen);
+  async function entraFs() {
+    const el = document.documentElement;
+    try {
+      if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: "hide" });
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    } catch {}
+    try { if (screen.orientation && screen.orientation.lock) await screen.orientation.lock("portrait").catch(() => {}); } catch {}
+    wake();
+  }
+  function esciFs() {
+    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }
+  function onFs() {
+    const mostra = fsSupportato && avviato && !inFs() && !sbloccato;
+    $("ovFullscreen").classList.toggle("show", mostra);
+  }
+  document.addEventListener("fullscreenchange", onFs);
+  document.addEventListener("webkitfullscreenchange", onFs);
+  $("btnTornaFs").onclick = async () => { await entraFs(); onFs(); };
+  $("btnFsAdmin").onclick = () => chiediPassword(apriAdmin);
+
+  let wl = null;
+  async function wake() { try { if ("wakeLock" in navigator && !wl) { wl = await navigator.wakeLock.request("screen"); wl.addEventListener("release", () => wl = null); } } catch {} }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") wake(); });
+
+  document.addEventListener("contextmenu", e => e.preventDefault());
+  document.addEventListener("gesturestart", e => e.preventDefault()); // niente zoom su iPhone
+  document.addEventListener("keydown", e => {
+    if (e.key === "F5" || e.key === "F11" || (e.ctrlKey && /^[rpsu]$/i.test(e.key))) e.preventDefault();
+    if (e.key === "Enter" && $("ovPassword").classList.contains("show")) { e.preventDefault(); $("btnPwdOk").click(); }
+    if (e.key === " " && !document.querySelector(".overlay.show") && avviato) { e.preventDefault(); $("btnPlay").click(); }
+  });
+  window.addEventListener("beforeunload", e => { if (!sbloccato && avviato) { e.preventDefault(); e.returnValue = ""; } });
+
+  /* ================= Password ================= */
+  let pwdCb = null;
+  function chiediPassword(cb) {
+    pwdCb = cb; $("inPassword").value = ""; $("errPassword").textContent = "";
+    $("ovPassword").classList.add("show");
+    setTimeout(() => $("inPassword").focus(), 60);
+  }
+  $("btnPwdAnnulla").onclick = () => { $("ovPassword").classList.remove("show"); pwdCb = null; };
+  $("btnPwdOk").onclick = () => {
+    if ($("inPassword").value === cfg.password) {
+      $("ovPassword").classList.remove("show"); const cb = pwdCb; pwdCb = null; cb && cb();
+    } else {
+      $("errPassword").textContent = "Password errata";
+      const m = $("modalPassword"); m.classList.remove("shake"); void m.offsetWidth; m.classList.add("shake");
+    }
+  };
+  $("btnLucchetto").onclick = () => chiediPassword(apriAdmin);
+
+  /* ================= Pannello animatore ================= */
+  let selezione = null;
+  async function apriAdmin() {
+    sbloccato = true; $("ovFullscreen").classList.remove("show");
+    selezione = cfg.attivo;
+    $("setTitolo").value = cfg.titolo; $("setSottotitolo").value = cfg.sottotitolo;
+    $("setVolume").value = cfg.volume; $("lblVolume").textContent = cfg.volume;
+    $("setPassword").value = "";
+    await disegnaLibreria();
+    $("ovAdmin").classList.add("show");
+  }
+  async function disegnaLibreria() {
+    const box = $("libreria"); box.innerHTML = "";
+    let lista = await DB.tutti().catch(() => []);
+    lista.sort((a, b) => b.data - a.data);
+    if (!lista.length) { box.innerHTML = '<div class="vuota">Nessun audio caricato. Premi il pulsante qui sotto per sceglierne uno.</div>'; return; }
+    if (!lista.some(b => b.id === selezione)) selezione = lista[0].id;
+    lista.forEach(b => {
+      const r = document.createElement("div"); r.className = "brano" + (b.id === selezione ? " attivo" : "");
+      r.innerHTML = '<span class="radio-dot"></span><div class="info"><b></b><small></small></div><button class="del" aria-label="Elimina">🗑</button>';
+      r.querySelector("b").textContent = b.nome;
+      r.querySelector("small").textContent = (b.durata ? fmt(b.durata) + " · " : "") + (b.blob.size / 1048576).toFixed(1) + " MB";
+      r.onclick = () => { selezione = b.id; disegnaLibreria(); };
+      r.querySelector(".del").onclick = async e => {
+        e.stopPropagation();
+        if (!confirm("Eliminare \"" + b.nome + "\" dalla radio?")) return;
+        await DB.del(b.id);
+        if (selezione === b.id) selezione = null;
+        disegnaLibreria();
+      };
+      box.appendChild(r);
+    });
+  }
+  function durataDi(blob) {
+    return new Promise(ok => {
+      const a = new Audio(); const u = URL.createObjectURL(blob);
+      a.preload = "metadata"; a.src = u;
+      a.onloadedmetadata = () => { ok(isFinite(a.duration) ? a.duration : 0); URL.revokeObjectURL(u); };
+      a.onerror = () => { ok(0); URL.revokeObjectURL(u); };
+      setTimeout(() => ok(0), 5000);
+    });
+  }
+  $("inFile").onchange = async e => {
+    const files = [...e.target.files]; e.target.value = "";
+    for (const f of files) {
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      const nome = f.name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ");
+      try {
+        const durata = await durataDi(f);
+        await DB.put({ id, nome, blob: f, durata, data: Date.now() });
+        selezione = id;
+      } catch { toast("⚠️ Spazio insufficiente per salvare \"" + nome + "\"", 5000); }
+    }
+    if (files.length) toast(files.length === 1 ? "✅ Audio caricato" : "✅ " + files.length + " audio caricati");
+    disegnaLibreria();
+  };
+  $("setVolume").oninput = e => { $("lblVolume").textContent = e.target.value; audio.volume = e.target.value / 100; };
+
+  $("btnSalvaImp").onclick = async () => {
+    cfg.titolo = $("setTitolo").value.trim() || DEFAULT.titolo;
+    cfg.sottotitolo = $("setSottotitolo").value.trim();
+    cfg.volume = parseInt($("setVolume").value, 10) || 100;
+    if ($("setPassword").value) { cfg.password = $("setPassword").value; toast("🔑 Password aggiornata"); }
+    const cambiato = selezione !== cfg.attivo || !branoCorrente || !(await DB.get(cfg.attivo).catch(() => null));
+    cfg.attivo = selezione;
+    salvaCfg(); applicaCfg();
+    $("ovAdmin").classList.remove("show");
+    if (cambiato) await caricaAttivo();
+    sbloccato = false;
+    await entraFs(); onFs();
+  };
+  $("btnEsci").onclick = () => {
+    $("ovAdmin").classList.remove("show");
+    sbloccato = true; audio.pause(); esciFs();
+    toast("Schermo intero disattivato: ora puoi chiudere la pagina.", 5000);
+  };
+
+  /* ================= Avvio ================= */
+  async function avvia() {
+    avviato = true;
+    $("avvio").classList.add("nascosto");
+    await entraFs();
+    onFs();
+    if (!branoCorrente) { toast("Nessun audio: apri il lucchetto per sceglierne uno", 5000); }
+  }
+  $("avvio").onclick = avvia;
+
+  applicaCfg();
+  caricaAttivo();
+})();
+</script>
+</body>
+</html>
