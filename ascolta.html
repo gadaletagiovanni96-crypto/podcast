@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#061a3a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Ascolta in cuffia</title>
+<style>
+  :root { --blu-notte: #061a3a; --blu: #0b3d91; --blu-chiaro: #1e63d6; --giallo: #ffc72c; --bianco: #fff; --rosso: #ff4d5e; --verde: #2ecc71; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI", -apple-system, "Helvetica Neue", Arial, sans-serif; color: var(--bianco);
+    background: radial-gradient(circle at 20% 0%, rgba(30,99,214,0.6), transparent 55%), radial-gradient(circle at 90% 100%, rgba(255,199,44,0.2), transparent 45%), linear-gradient(170deg, #0b3d91, #061a3a 70%);
+    background-color: var(--blu-notte);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    padding: calc(20px + env(safe-area-inset-top)) 20px calc(20px + env(safe-area-inset-bottom));
+    -webkit-tap-highlight-color: transparent; user-select: none; -webkit-user-select: none;
+  }
+  .testa { position: absolute; top: calc(16px + env(safe-area-inset-top)); left: 20px; right: 20px; display: flex; align-items: center; gap: 10px; text-align: left; }
+  .logo { width: 42px; height: 42px; border-radius: 13px; background: var(--giallo); display: grid; place-items: center; flex: none; }
+  .logo svg { width: 24px; height: 24px; }
+  .testa b { display: block; font-size: 1.05rem; } .testa small { color: var(--giallo); font-weight: 600; }
+
+  .cerchio { position: relative; width: min(64vw, 260px); aspect-ratio: 1; margin: 30px 0 26px; display: grid; place-items: center; }
+  .cerchio .onda { position: absolute; inset: 0; border-radius: 50%; border: 3px solid var(--giallo); opacity: 0; pointer-events: none; }
+  body.in-diretta .cerchio .onda { animation: onda 2.4s ease-out infinite; }
+  .cerchio .onda:nth-child(2) { animation-delay: 1.2s !important; }
+  @keyframes onda { 0% { transform: scale(.78); opacity: .7 } 100% { transform: scale(1.22); opacity: 0 } }
+  .tasto {
+    width: 82%; aspect-ratio: 1; border-radius: 50%; border: none; cursor: pointer;
+    background: radial-gradient(circle at 35% 30%, #ffe48f, var(--giallo) 55%, #e5a800);
+    box-shadow: 0 16px 44px rgba(255,199,44,0.45), inset 0 -8px 18px rgba(0,0,0,0.12);
+    color: var(--blu-notte); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px;
+    font-weight: 900; font-size: 1.05rem; letter-spacing: 1px; transition: transform .1s;
+  }
+  .tasto:active { transform: scale(.95); }
+  .tasto svg { width: 42%; height: auto; }
+  body.in-diretta .tasto { background: radial-gradient(circle at 35% 30%, #6aa6ff, var(--blu-chiaro) 60%, var(--blu)); color: #fff; box-shadow: 0 16px 44px rgba(30,99,214,0.5); }
+
+  h1 { font-size: clamp(1.4rem, 6vw, 1.9rem); line-height: 1.2; }
+  h1 em { font-style: normal; color: var(--giallo); }
+  .stato { margin-top: 10px; display: inline-flex; align-items: center; gap: 8px; padding: 8px 16px; border-radius: 999px; background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.16); font-weight: 700; }
+  .stato i { width: 10px; height: 10px; border-radius: 50%; background: #888; }
+  .stato.ok i { background: var(--verde); box-shadow: 0 0 10px var(--verde); animation: lamp 1.4s infinite; }
+  .stato.att i { background: var(--giallo); }
+  .stato.ko i { background: var(--rosso); }
+  @keyframes lamp { 50% { opacity: .35 } }
+  .onda-info { margin-top: 16px; color: rgba(255,255,255,0.8); min-height: 1.4em; max-width: 90vw; }
+  .onda-info b { color: var(--giallo); }
+  .consigli { margin-top: 26px; display: flex; flex-direction: column; gap: 8px; font-size: .92rem; color: rgba(255,255,255,0.75); }
+</style>
+</head>
+<body>
+  <div class="testa">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="#061a3a"><path d="M12 3a9 9 0 0 0-9 9v6a3 3 0 0 0 3 3h2v-8H5v-1a7 7 0 0 1 14 0v1h-3v8h2a3 3 0 0 0 3-3v-6a9 9 0 0 0-9-9Z"/></svg></div>
+    <div><b id="nomePostazione">Ascolta in cuffia</b><small>Azione Cattolica</small></div>
+  </div>
+
+  <h1 id="titolo">Metti le <em>cuffie</em><br>e tocca il pulsante</h1>
+  <div class="cerchio">
+    <div class="onda"></div><div class="onda"></div>
+    <button class="tasto" id="tasto">
+      <svg viewBox="0 0 24 24" fill="currentColor" id="ico"><path d="M12 3a9 9 0 0 0-9 9v6a3 3 0 0 0 3 3h2v-8H5v-1a7 7 0 0 1 14 0v1h-3v8h2a3 3 0 0 0 3-3v-6a9 9 0 0 0-9-9Z"/></svg>
+      <span id="lbl">ASCOLTA</span>
+    </button>
+  </div>
+  <div class="stato" id="stato"><i></i><span id="statoTxt">Pronto</span></div>
+  <div class="onda-info" id="ondaInfo"></div>
+  <div class="consigli" id="consigli">
+    <span>🎧 Usa le tue cuffie o auricolari</span>
+    <span>🔊 Regola il volume con i tasti del telefono</span>
+    <span>📱 Tieni lo schermo acceso mentre ascolti</span>
+  </div>
+
+  <audio id="audio" playsinline autoplay></audio>
+
+<script src="diretta.js"></script>
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const canale = (new URLSearchParams(location.search).get("canale") || "tv").replace(/[^a-z0-9]/gi, "");
+  const NOMI = { tv: "TV · audio in cuffia", desktop: "PC anni 2000 · audio in cuffia" };
+  $("nomePostazione").textContent = NOMI[canale] || "Ascolta in cuffia";
+
+  const audio = $("audio");
+  const rx = new MostraAC.Ricevitore(canale, audio);
+  let vuoleAscoltare = false, trasmissioneAttiva = false, riprova = null;
+
+  function stato(testo, tipo) { $("statoTxt").textContent = testo; $("stato").className = "stato " + (tipo || ""); }
+  function disegna() {
+    const s = rx.stato;
+    document.body.classList.toggle("in-diretta", vuoleAscoltare && s === "diretta");
+    $("lbl").textContent = vuoleAscoltare ? "STOP" : "ASCOLTA";
+    $("ico").innerHTML = vuoleAscoltare
+      ? '<rect x="6" y="6" width="12" height="12" rx="2"/>'
+      : '<path d="M12 3a9 9 0 0 0-9 9v6a3 3 0 0 0 3 3h2v-8H5v-1a7 7 0 0 1 14 0v1h-3v8h2a3 3 0 0 0 3-3v-6a9 9 0 0 0-9-9Z"/>';
+    if (!vuoleAscoltare) {
+      $("titolo").innerHTML = "Metti le <em>cuffie</em><br>e tocca il pulsante";
+      return stato(trasmissioneAttiva ? "Diretta disponibile" : "In attesa della postazione…", trasmissioneAttiva ? "att" : "");
+    }
+    if (!trasmissioneAttiva) return stato("La diretta non è attiva: aspetta…", "ko");
+    if (s === "diretta") { $("titolo").innerHTML = "Sei <em>in ascolto</em>"; return stato("In diretta", "ok"); }
+    if (s === "tocca") return stato("Tocca di nuovo il pulsante", "att");
+    if (s === "persa") return stato("Riconnessione…", "ko");
+    stato("Collegamento…", "att");
+  }
+  rx.onStato = s => {
+    disegna();
+    if (s === "persa" && vuoleAscoltare) { clearTimeout(riprova); riprova = setTimeout(() => vuoleAscoltare && rx.connetti().catch(() => {}), 1500); }
+  };
+
+  $("tasto").onclick = () => {
+    if (rx.stato === "tocca") { audio.play().catch(() => {}); rx._imposta("diretta"); return; }
+    vuoleAscoltare = !vuoleAscoltare;
+    if (vuoleAscoltare) {
+      audio.play().catch(() => {});      // sblocca l'audio su iPhone (serve un tocco)
+      wake();
+      if (trasmissioneAttiva) rx.connetti().catch(() => rx._imposta("persa"));
+    } else {
+      clearTimeout(riprova); rx.chiudi(); rx.stato = "spento"; audio.srcObject = null;
+    }
+    disegna();
+  };
+
+  async function controlla() {
+    try {
+      const j = await (await fetch("/api/rtc/stato?canale=" + canale, { cache: "no-store" })).json();
+      const prima = trasmissioneAttiva;
+      trasmissioneAttiva = j.attivo;
+      const o = j.onda;
+      $("ondaInfo").innerHTML = o && o.titolo ? (o.playing ? "Sta andando: " : "In pausa: ") + "<b></b>" : "";
+      if (o && o.titolo) $("ondaInfo").querySelector("b").textContent = o.titolo;
+      if (vuoleAscoltare && trasmissioneAttiva && (!prima || rx.stato === "persa" || rx.stato === "spento")) rx.connetti().catch(() => {});
+    } catch { trasmissioneAttiva = false; }
+    disegna();
+  }
+  setInterval(controlla, 2000); controlla();
+
+  let wl = null;
+  async function wake() { try { if ("wakeLock" in navigator && !wl) { wl = await navigator.wakeLock.request("screen"); wl.addEventListener("release", () => wl = null); } } catch {} }
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") { wake(); if (vuoleAscoltare && rx.stato !== "diretta") rx.connetti().catch(() => {}); }
+  });
+  window.addEventListener("pagehide", () => rx.chiudi());
+  disegna();
+})();
+</script>
+</body>
+</html>

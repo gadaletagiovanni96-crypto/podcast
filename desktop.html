@@ -366,6 +366,18 @@
         <div class="progresso" id="progresso"><div></div></div>
       </fieldset>
       <fieldset>
+        <legend>Ascolto in cuffia dal telefono</legend>
+        <div class="griglia">
+          <div><label>Ascolto dal telefono</label>
+            <select class="campo" id="setQr"><option value="0">Spento (tutto come prima)</option><option value="1">Attivo</option></select></div>
+          <div><label>Audio anche dalle casse del PC</label>
+            <select class="campo" id="setCasse"><option value="1">Sì</option><option value="0">No, solo nelle cuffie</option></select></div>
+          <div class="full"><label>Radio dal telefono (audio della cartella «audio» di questo PC)</label>
+            <select class="campo" id="setRadio"><option value="1">Attiva</option><option value="0">Spenta</option></select></div>
+        </div>
+        <p id="infoQr" style="margin:10px 0 0;font-size:13px"></p>
+      </fieldset>
+      <fieldset>
         <legend>Impostazioni</legend>
         <div class="griglia">
           <div><label>Nome della cartella</label><input class="campo" id="setCartella" maxlength="30"></div>
@@ -385,6 +397,7 @@
 
 <div class="toast" id="toast"></div>
 
+<script src="diretta.js"></script>
 <script>
 (() => {
   "use strict";
@@ -393,7 +406,8 @@
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 
   /* ================= Impostazioni ================= */
-  const DEFAULT = { password: "azione2026", cartella: "I nostri video", sfondo: "PC AC", inattivita: 60, volume: 100, ordine: [] };
+  const DEFAULT = { password: "azione2026", cartella: "I nostri video", sfondo: "PC AC", inattivita: 60, volume: 100, ordine: [],
+    qr: false, casse: true };
   const ls = {
     get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
@@ -406,7 +420,7 @@
     $("txtSfondo").textContent = cfg.sfondo;
     $("fumettoTxt").textContent = "Fai doppio clic sulla cartella «" + cfg.cartella + "» per vedere i video.";
     document.title = cfg.sfondo;
-    document.querySelectorAll("video").forEach(v => v.volume = cfg.volume / 100);
+    impostaVolume();
   }
   function toast(msg, ms = 3000) {
     const t = $("toast"); t.textContent = msg; t.classList.add("show");
@@ -457,11 +471,12 @@
   function creaFinestra(id, titolo, icona, w, h) {
     const el = document.createElement("div");
     el.className = "finestra";
-    const W = Math.min(w, window.innerWidth - 20), H = Math.min(h, window.innerHeight - 60);
+    const largh = window.innerWidth;
+    const W = Math.min(w, largh - 20), H = Math.min(h, window.innerHeight - 60);
     const off = (conta++ % 6) * 28;
     el.style.width = W + "px"; el.style.height = H + "px";
     const spostaX = id.startsWith("v_") ? 120 : -80;
-    el.style.left = Math.max(10, Math.min(window.innerWidth - W - 10, (window.innerWidth - W) / 2 + spostaX + off)) + "px";
+    el.style.left = Math.max(10, Math.min(largh - W - 10, (largh - W) / 2 + spostaX + off)) + "px";
     el.style.top = Math.max(8, Math.min(window.innerHeight - H - 56, (window.innerHeight - 46 - H) / 2 - 40 + off)) + "px";
     el.innerHTML = `<div class="titolo-f"><svg class="ico"><use href="${icona}"/></svg><span class="testo"></span>
       <button class="bt-f riduci" title="Riduci a icona">_</button><button class="bt-f chiudi" title="Chiudi">✕</button></div>
@@ -596,6 +611,7 @@
     const bPlay = corpo.querySelector(".play"), bStop = corpo.querySelector(".stop"), barra = corpo.querySelector(".scorri"), tempo = corpo.querySelector(".tempo-v");
     f.video = v; f.url = URL.createObjectURL(rec.blob);
     v.src = f.url; v.volume = cfg.volume / 100;
+    collegaVideo(v);
     let trascina = false;
     const tot = () => isFinite(v.duration) && v.duration > 0 ? v.duration : (rec.durata || 0);
     const aggiorna = () => {
@@ -726,6 +742,9 @@
     $("setInattivita").value = cfg.inattivita;
     $("setVolume").value = cfg.volume; $("lblVolume").textContent = cfg.volume;
     $("setPassword").value = "";
+    $("setQr").value = cfg.qr ? "1" : "0"; $("setCasse").value = cfg.casse ? "1" : "0";
+    leggiRadio();
+    mostraInfoQr();
     await caricaLista();
     disegnaLibreria();
     $("ovAdmin").classList.add("show");
@@ -797,6 +816,8 @@
     cfg.sfondo = $("setSfondo").value.trim() || DEFAULT.sfondo;
     cfg.inattivita = Math.max(10, Math.min(600, parseInt($("setInattivita").value, 10) || DEFAULT.inattivita));
     cfg.volume = parseInt($("setVolume").value, 10); if (isNaN(cfg.volume)) cfg.volume = 100;
+    cfg.qr = $("setQr").value === "1"; cfg.casse = $("setCasse").value === "1";
+    scriviRadio($("setRadio").value === "1");
     if ($("setPassword").value) { cfg.password = $("setPassword").value; toast("Password aggiornata"); }
     salvaCfg(); applicaCfg();
     $("ovAdmin").classList.remove("show");
@@ -804,6 +825,7 @@
     await caricaLista();
     sbloccato = false; ultimaAttivita = Date.now();
     await entraFs(); onFs();
+    aggiornaQr();
   };
   $("btnEsci").onclick = () => {
     $("ovAdmin").classList.remove("show");
@@ -833,11 +855,72 @@
     suonoAvvio();
     ultimaAttivita = Date.now();
     onFs();
+    aggiornaQr();
     if (!videoLista.length) toast("La cartella è vuota: l'animatore preme X per aggiungere i video", 5000);
     setTimeout(mostraFumetto, 700);
   }
   $("avvio").onclick = avvia;
   document.addEventListener("keydown", e => { if (!avviato && !e.repeat) { e.preventDefault(); avvia(); } });
+
+  /* ================= Audio in cuffia (QR code + diretta WebRTC) ================= */
+  const CON_SERVER = !!window.MostraAC && MostraAC.conServer();
+  const trasmettitore = window.MostraAC ? new MostraAC.Trasmettitore("desktop") : null;
+  let grafo = null, infoServer = null;
+  function preparaGrafo() {
+    if (grafo) return grafo;
+    const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
+    const casse = ctx.createGain(), diretta = ctx.createMediaStreamDestination();
+    casse.connect(ctx.destination);
+    grafo = { ctx, casse, diretta };
+    impostaVolume();
+    return grafo;
+  }
+  // ogni video aperto passa da qui: una strada va alle casse, l'altra ai telefoni
+  function collegaVideo(v) {
+    if (!grafo || v._collegato) return;
+    try {
+      const src = grafo.ctx.createMediaElementSource(v);
+      src.connect(grafo.casse); src.connect(grafo.diretta);
+      v._collegato = true; v.volume = 1;
+      v.addEventListener("play", () => grafo.ctx.state === "suspended" && grafo.ctx.resume());
+    } catch {}
+  }
+  function impostaVolume() {
+    const vol = cfg.volume / 100;
+    document.querySelectorAll("video").forEach(v => v.volume = v._collegato ? 1 : vol);
+    if (grafo) grafo.casse.gain.value = (cfg.qr && !cfg.casse) ? 0 : vol;
+  }
+  async function aggiornaQr() {
+    const attivo = cfg.qr && CON_SERVER && trasmettitore;
+    if (!attivo) { if (trasmettitore) trasmettitore.ferma(); impostaVolume(); return; }
+    const g = preparaGrafo();
+    if (g.ctx.state === "suspended") g.ctx.resume().catch(() => {});
+    document.querySelectorAll("video").forEach(collegaVideo);
+    impostaVolume();
+    try { infoServer = await MostraAC.info(); } catch { infoServer = null; }
+    trasmettitore.avvia(g.diretta.stream);
+  }
+  async function leggiRadio() {
+    try { const j = await (await fetch("/api/config", { cache: "no-store" })).json(); $("setRadio").value = j.radio ? "1" : "0"; } catch {}
+  }
+  function scriviRadio(on) {
+    if (!CON_SERVER) return;
+    fetch("/api/config", { method: "POST", body: JSON.stringify({ radio: on }), headers: { "Content-Type": "application/json" } }).catch(() => {});
+  }
+  // dice ai telefoni cosa sta andando
+  setInterval(() => {
+    if (!cfg.qr || !CON_SERVER) return;
+    let titolo = "", playing = false;
+    finestre.forEach(f => { if (f.video && !f.video.paused) { playing = true; titolo = f.el.querySelector(".testo").textContent; } });
+    fetch("/api/stato?canale=desktop", { method: "POST", body: JSON.stringify({ titolo, playing }), headers: { "Content-Type": "application/json" } }).catch(() => {});
+  }, 1500);
+  function mostraInfoQr() {
+    const box = $("infoQr");
+    if (!CON_SERVER) { box.innerHTML = "Funziona solo se il desktop è aperto dal <b>programma ponte</b> (AVVIA-DESKTOP): si apre da solo all'indirizzo http://localhost:8080/desktop.html."; return; }
+    const n = trasmettitore ? trasmettitore.ascoltatori : 0;
+    const qr = "I QR code da stampare (PNG) li trovi su <b>http://localhost:8080/qr.html</b>.";
+    box.innerHTML = (cfg.qr ? "✔ Attivo · persone in ascolto ora: <b>" + n + "</b>" : "Ascolto dal telefono spento.") + "<br>" + qr;
+  }
 
   applicaCfg();
   caricaLista();

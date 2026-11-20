@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#061a3a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>Radio AC</title>
+<style>
+  :root { --blu-notte: #061a3a; --blu: #0b3d91; --blu-chiaro: #1e63d6; --giallo: #ffc72c; --giallo-chiaro: #ffe08a; --bianco: #fff; --rosso: #ff4d5e; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: #061a3a; }
+  html, body { min-height: 100%; }
+  body {
+    font-family: "Segoe UI", -apple-system, "Helvetica Neue", Arial, sans-serif; color: var(--bianco);
+    background: radial-gradient(circle at 20% 10%, rgba(30,99,214,0.6), transparent 50%), radial-gradient(circle at 80% 95%, rgba(255,199,44,0.22), transparent 45%), linear-gradient(170deg, #0b3d91, #061a3a 75%);
+    background-color: var(--blu-notte); min-height: 100vh;
+    padding: calc(14px + env(safe-area-inset-top)) 16px calc(20px + env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; align-items: center;
+    user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; touch-action: manipulation;
+  }
+  header { width: 100%; max-width: 460px; display: flex; align-items: center; gap: 10px; }
+  .logo { width: 42px; height: 42px; border-radius: 13px; background: var(--giallo); display: grid; place-items: center; flex: none; }
+  .logo svg { width: 24px; height: 24px; }
+  header b { display: block; font-size: 1.15rem; } header small { color: var(--giallo); font-weight: 600; }
+
+  .radio {
+    position: relative; width: 100%; max-width: 440px; margin-top: 70px;
+    background: linear-gradient(170deg, #1552b8 0%, #0b3d91 55%, #08306f 100%);
+    border-radius: 34px; padding: 20px 20px 22px; border: 3px solid var(--giallo);
+    box-shadow: 0 30px 70px rgba(0,0,0,0.5), inset 0 2px 0 rgba(255,255,255,0.25), inset 0 -6px 0 rgba(0,0,0,0.25);
+  }
+  .antenna { position: absolute; right: 54px; top: -78px; width: 6px; height: 96px; background: linear-gradient(90deg, #c9ced8, #f3f5f9, #9aa1ad); border-radius: 3px; transform: rotate(18deg); transform-origin: bottom center; z-index: -1; }
+  .antenna::before { content: ""; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); width: 14px; height: 14px; border-radius: 50%; background: var(--giallo); }
+  .radio.on .antenna::before { animation: segnale 1.6s ease-out infinite; }
+  @keyframes segnale { 0% { box-shadow: 0 0 0 0 rgba(255,199,44,0.7) } 100% { box-shadow: 0 0 0 22px rgba(255,199,44,0) } }
+  .maniglia { position: absolute; left: 50%; top: -22px; transform: translateX(-50%); width: 46%; height: 26px; border: 6px solid var(--giallo); border-bottom: none; border-radius: 20px 20px 0 0; z-index: -1; }
+  .riga-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .on-air { display: inline-flex; align-items: center; gap: 8px; padding: 6px 14px; border-radius: 10px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); font-weight: 800; font-size: .8rem; letter-spacing: 2px; color: rgba(255,255,255,0.35); }
+  .on-air .led { width: 10px; height: 10px; border-radius: 50%; background: #5a2630; }
+  .radio.on .on-air { color: #fff; border-color: rgba(255,77,94,0.6); background: rgba(255,77,94,0.18); }
+  .radio.on .on-air .led { background: var(--rosso); box-shadow: 0 0 12px var(--rosso); animation: lamp 1.2s infinite; }
+  @keyframes lamp { 50% { opacity: .35 } }
+  .marca { font-weight: 900; font-style: italic; color: var(--giallo); }
+  .display { background: linear-gradient(180deg, #fff3c4, #ffe08a); border-radius: 16px; padding: 12px 14px 10px; color: var(--blu-notte); box-shadow: inset 0 3px 10px rgba(0,0,0,0.25), 0 0 0 4px rgba(0,0,0,0.25); }
+  .titolo { font-weight: 800; font-size: 1.1rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .barra { position: relative; height: 26px; margin: 10px 0 4px; cursor: pointer; touch-action: none; }
+  .barra .traccia { position: absolute; left: 0; right: 0; top: 10px; height: 6px; border-radius: 3px; background: rgba(6,26,58,0.18); }
+  .barra .pieno { position: absolute; left: 0; top: 10px; height: 6px; border-radius: 3px; background: var(--blu); width: 0; }
+  .barra .ago { position: absolute; top: 2px; width: 4px; height: 22px; margin-left: -2px; border-radius: 2px; background: var(--rosso); box-shadow: 0 0 6px rgba(255,77,94,0.7); left: 0; }
+  .tempi { display: flex; justify-content: space-between; font-size: .85rem; font-weight: 700; opacity: .75; font-variant-numeric: tabular-nums; }
+  .speaker { margin: 18px 0; height: 90px; border-radius: 18px; background-color: #072a63; background-image: radial-gradient(circle, rgba(0,0,0,0.55) 2.4px, transparent 2.8px); background-size: 11px 11px; box-shadow: inset 0 4px 14px rgba(0,0,0,0.45); display: flex; align-items: flex-end; justify-content: center; gap: 5px; padding: 10px 14px; }
+  .speaker i { flex: 1; max-width: 16px; height: 6%; border-radius: 5px 5px 2px 2px; background: linear-gradient(0deg, var(--giallo), #ffe9a6); opacity: .25; transition: height .12s linear; }
+  .radio.on .speaker i { opacity: .95; }
+  .comandi { display: flex; align-items: center; justify-content: space-around; }
+  .tondo { width: 70px; height: 70px; border-radius: 50%; border: none; cursor: pointer; background: conic-gradient(from 0deg, #e8eaef, #9aa1ad, #e8eaef, #9aa1ad, #e8eaef); box-shadow: 0 6px 14px rgba(0,0,0,0.4), inset 0 0 0 5px rgba(255,255,255,0.3); color: var(--blu-notte); display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; font-size: .6rem; gap: 1px; }
+  .tondo svg { width: 24px; height: 24px; }
+  .play { width: 124px; height: 124px; border-radius: 50%; border: none; cursor: pointer; background: radial-gradient(circle at 35% 30%, #ffe48f, var(--giallo) 55%, #e9a800); box-shadow: 0 14px 34px rgba(255,199,44,0.45), 0 0 0 7px rgba(0,0,0,0.25); color: var(--blu-notte); display: flex; flex-direction: column; align-items: center; justify-content: center; font-weight: 900; font-size: .85rem; letter-spacing: 1.5px; }
+  .play svg { width: 52px; height: 52px; }
+  .play:active, .tondo:active { transform: scale(.94); }
+  button:disabled { opacity: .45; }
+
+  .lista { width: 100%; max-width: 440px; margin-top: 22px; display: flex; flex-direction: column; gap: 8px; }
+  .lista h2 { font-size: 1rem; color: var(--giallo); margin-bottom: 2px; }
+  .brano { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 14px; background: rgba(255,255,255,0.08); border: 2px solid transparent; cursor: pointer; text-align: left; color: #fff; font-size: 1rem; width: 100%; }
+  .brano.attivo { border-color: var(--giallo); background: rgba(255,199,44,0.12); }
+  .brano .n { width: 30px; height: 30px; border-radius: 50%; background: var(--giallo); color: var(--blu-notte); font-weight: 800; display: grid; place-items: center; flex: none; font-size: .9rem; }
+  .avviso { margin-top: 24px; max-width: 440px; text-align: center; color: var(--giallo-chiaro); font-weight: 700; line-height: 1.5; }
+  .consiglio { margin-top: 18px; color: rgba(255,255,255,0.7); font-size: .9rem; text-align: center; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="logo"><svg viewBox="0 0 24 24" fill="#061a3a"><path d="M20 6H8.3l8.26-3.34L15.88 1 3.24 6.15A2 2 0 0 0 2 8v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2Zm0 2v3h-2V9h-2v2H4V8h16ZM7 19a3 3 0 1 1 0-6 3 3 0 0 1 0 6Z"/></svg></div>
+    <div><b>Radio AC</b><small>Azione Cattolica</small></div>
+  </header>
+
+  <div class="radio" id="radio">
+    <div class="maniglia"></div><div class="antenna"></div>
+    <div class="riga-top"><div class="on-air"><span class="led"></span>ON AIR</div><div class="marca">FM · AC</div></div>
+    <div class="display">
+      <div class="titolo" id="titolo">Sintonizzazione…</div>
+      <div class="barra" id="barra"><div class="traccia"></div><div class="pieno" id="pieno"></div><div class="ago" id="ago"></div></div>
+      <div class="tempi"><span id="ora">00:00</span><span id="tot">00:00</span></div>
+    </div>
+    <div class="speaker" id="speaker"></div>
+    <div class="comandi">
+      <button class="tondo" id="btnInizio" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>INIZIO</button>
+      <button class="play" id="btnPlay" disabled><svg viewBox="0 0 24 24" fill="currentColor" id="ico"><path d="M8 5v14l11-7z"/></svg><span id="lbl">PLAY</span></button>
+      <button class="tondo" id="btnAvanti" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg>+10 s</button>
+    </div>
+  </div>
+
+  <div class="lista" id="lista"></div>
+  <div class="avviso" id="avviso"></div>
+  <div class="consiglio">🎧 Usa le cuffie · 🔊 regola il volume con i tasti del telefono</div>
+
+  <audio id="audio" preload="metadata" playsinline></audio>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const fmt = s => { s = Math.max(0, Math.floor(s || 0)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+  const audio = $("audio");
+  let brani = [], corrente = -1;
+
+  for (let i = 0; i < 18; i++) $("speaker").appendChild(document.createElement("i"));
+  const barre = [...$("speaker").children];
+
+  async function carica() {
+    try {
+      const j = await (await fetch("/api/radio", { cache: "no-store" })).json();
+      brani = j.brani || [];
+      if (j.attiva === false) {
+        $("titolo").textContent = "Radio spenta";
+        $("avviso").textContent = "La radio non è attiva in questo momento. Riprova più tardi o chiedi all'animatore.";
+        return;
+      }
+    } catch { brani = []; }
+    if (!brani.length) {
+      $("titolo").textContent = "Nessun audio";
+      $("avviso").textContent = "La radio non ha ancora audio da trasmettere. Chiedi all'animatore.";
+      return;
+    }
+    $("avviso").textContent = "";
+    disegnaLista();
+    scegli(0, false);
+  }
+  function disegnaLista() {
+    const box = $("lista"); box.innerHTML = "";
+    if (brani.length < 2) return;
+    const h = document.createElement("h2"); h.textContent = "Scegli cosa ascoltare"; box.appendChild(h);
+    brani.forEach((b, i) => {
+      const el = document.createElement("button"); el.className = "brano" + (i === corrente ? " attivo" : "");
+      el.innerHTML = `<span class="n">${i + 1}</span><span></span>`;
+      el.lastChild.textContent = b.nome;
+      el.onclick = () => scegli(i, true);
+      box.appendChild(el);
+    });
+  }
+  function scegli(i, suona) {
+    corrente = i;
+    audio.src = brani[i].file.split("/").map(encodeURIComponent).join("/");
+    audio.load();
+    $("titolo").textContent = brani[i].nome;
+    ["btnPlay", "btnInizio", "btnAvanti"].forEach(id => $(id).disabled = false);
+    disegnaLista(); aggiorna();
+    if (suona) audio.play().catch(() => {});
+  }
+
+  function aggiorna() {
+    const tot = isFinite(audio.duration) ? audio.duration : 0;
+    const p = tot ? audio.currentTime / tot : 0;
+    $("ora").textContent = fmt(audio.currentTime); $("tot").textContent = fmt(tot);
+    $("pieno").style.width = (p * 100) + "%"; $("ago").style.left = (p * 100) + "%";
+  }
+  function ui() {
+    const on = !audio.paused;
+    $("radio").classList.toggle("on", on);
+    $("lbl").textContent = on ? "PAUSA" : "PLAY";
+    $("ico").innerHTML = on ? '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>' : '<path d="M8 5v14l11-7z"/>';
+  }
+  audio.addEventListener("timeupdate", aggiorna);
+  audio.addEventListener("loadedmetadata", aggiorna);
+  audio.addEventListener("play", ui); audio.addEventListener("pause", ui);
+  audio.addEventListener("ended", () => { audio.pause(); audio.currentTime = 0; aggiorna(); ui(); });  // a fine audio torna all'inizio
+  audio.addEventListener("error", () => { if (audio.getAttribute("src")) $("avviso").textContent = "Questo audio non si riesce a riprodurre."; });
+
+  $("btnPlay").onclick = () => { if (audio.paused) audio.play().catch(() => {}); else audio.pause(); };
+  $("btnInizio").onclick = () => { audio.currentTime = 0; aggiorna(); };
+  $("btnAvanti").onclick = () => { if (isFinite(audio.duration)) audio.currentTime = Math.min(audio.duration - 0.5, audio.currentTime + 10); };
+
+  // barra di scorrimento trascinabile
+  const barra = $("barra");
+  function vaiA(x) {
+    const r = barra.getBoundingClientRect();
+    if (isFinite(audio.duration)) { audio.currentTime = Math.max(0, Math.min(1, (x - r.left) / r.width)) * audio.duration; aggiorna(); }
+  }
+  let trascina = false;
+  barra.addEventListener("pointerdown", e => { trascina = true; barra.setPointerCapture(e.pointerId); vaiA(e.clientX); });
+  barra.addEventListener("pointermove", e => { if (trascina) vaiA(e.clientX); });
+  barra.addEventListener("pointerup", () => trascina = false);
+
+  // altoparlante animato
+  function anima(t) {
+    const on = !audio.paused;
+    barre.forEach((b, i) => b.style.height = on ? (18 + 70 * Math.abs(Math.sin(t / 260 + i * 0.7) * Math.cos(t / 410 + i))) + "%" : "6%");
+    requestAnimationFrame(anima);
+  }
+  requestAnimationFrame(anima);
+
+  carica();
+})();
+</script>
+</body>
+</html>

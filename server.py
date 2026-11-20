@@ -1,94 +1,288 @@
 #!/usr/bin/env python3
-"""Server locale per il telecomando della TV (Mac / Linux / Windows con Python).
+"""Programma ponte della mostra (funziona senza Internet, sulla rete Wi-Fi locale).
 
-Avvio:  python3 server.py      (sul Mac puoi anche fare doppio clic su avvia-telecomando-mac.command)
+Fa tre cose:
+  1. telecomando della TV dal telefono;
+  2. radio da ascoltare col telefono (gli audio vanno messi nella cartella "audio");
+  3. audio in diretta di TV e desktop nelle cuffie dei visitatori (QR code).
+
+Avvio:  Windows -> doppio clic su "avvia-telecomando-windows.bat"
+        Mac     -> doppio clic su "avvia-telecomando-mac.command"
+        altro   -> python3 server.py [porta] [pagina-da-aprire]
 """
-import json, os, socket, sys, threading, time, webbrowser
-from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
-from urllib.parse import urlparse, parse_qs
+import json, mimetypes, os, re, socket, sys, threading, time, webbrowser
+from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
+from urllib.parse import urlparse, parse_qs, unquote
 
-PORTA = int(sys.argv[1]) if len(sys.argv) > 1 else 8080
-CARTELLA = os.path.dirname(os.path.abspath(__file__))
-stato = {"cmd_id": 0, "cmd": "", "tv": None, "tv_t": 0.0}
+PORTA = int(sys.argv[1]) if len(sys.argv) > 1 and sys.argv[1].isdigit() else 8080
+PAGINA = sys.argv[2] if len(sys.argv) > 2 else "tv.html"
+CARTELLA = os.path.dirname(os.path.realpath(__file__))
+CARTELLA_AUDIO = os.path.join(CARTELLA, "audio")
+ESTENSIONI_AUDIO = (".mp3", ".m4a", ".aac", ".wav", ".ogg", ".oga", ".opus", ".webm", ".flac")
+
+mimetypes.add_type("audio/mp4", ".m4a")
+mimetypes.add_type("audio/aac", ".aac")
+mimetypes.add_type("audio/ogg", ".ogg")
+mimetypes.add_type("audio/ogg", ".opus")
+mimetypes.add_type("audio/flac", ".flac")
+mimetypes.add_type("application/javascript", ".js")
+
 blocco = threading.Lock()
+# telecomando + stato delle postazioni (per canale: "tv", "desktop")
+comandi = {"id": 0, "azione": ""}
+stati = {}            # canale -> (dati, istante)
+# segnalazione per l'audio in diretta (WebRTC)
+code = {}             # (canale, destinatario) -> [ (istante, messaggio) ]
+trasmettitori = {}    # canale -> {"visto": istante, "ascoltatori": n}
+FILE_CONFIG = os.path.join(CARTELLA, "impostazioni.json")
 
 
-def ip_locale():
+def leggi_config():
+    try:
+        with open(FILE_CONFIG, encoding="utf-8") as f:
+            c = json.load(f)
+    except (OSError, ValueError):
+        c = {}
+    return {"radio": bool(c.get("radio", True))}
+
+
+def scrivi_config(c):
+    try:
+        with open(FILE_CONFIG, "w", encoding="utf-8") as f:
+            json.dump(c, f)
+    except OSError:
+        pass
+
+
+def indirizzi_locali():
+    """Indirizzi IPv4 del PC: prima quello usato per uscire sulla rete, poi gli altri."""
+    trovati = []
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
         s.connect(("10.255.255.255", 1))
-        return s.getsockname()[0]
+        trovati.append(s.getsockname()[0])
     except OSError:
-        return "localhost"
+        pass
     finally:
         s.close()
+    try:
+        for info in socket.getaddrinfo(socket.gethostname(), None, socket.AF_INET):
+            trovati.append(info[4][0])
+    except OSError:
+        pass
+    puliti = []
+    for ip in trovati:
+        if ip.startswith("127.") or ip.startswith("169.254.") or ip in puliti:
+            continue
+        puliti.append(ip)
+    return puliti or ["localhost"]
 
 
-IP = ip_locale()
+IPS = indirizzi_locali()
+IP = IPS[0]
 
 
-class Gestore(SimpleHTTPRequestHandler):
-    def __init__(self, *a, **k):
-        super().__init__(*a, directory=CARTELLA, **k)
+def nome_leggibile(file):
+    base = os.path.splitext(file)[0]
+    base = re.sub(r"^\d+[\s._-]+", "", base)          # "01 - titolo" -> "titolo"
+    return re.sub(r"[_]+", " ", base).strip() or file
+
+
+class Gestore(BaseHTTPRequestHandler):
+    protocol_version = "HTTP/1.1"
+    server_version = "MostraAC"
 
     def log_message(self, *a):
         pass  # niente messaggi per ogni richiesta
 
-    def end_headers(self):
+    # ---------- utilità ----------
+    def _invia(self, codice, corpo, tipo, extra=None):
+        self.send_response(codice)
+        self.send_header("Content-Type", tipo)
+        self.send_header("Content-Length", str(len(corpo)))
         self.send_header("Cache-Control", "no-store")
-        super().end_headers()
+        for k, v in (extra or {}).items():
+            self.send_header(k, v)
+        self.end_headers()
+        if self.command != "HEAD":
+            self.wfile.write(corpo)
 
     def _json(self, dati):
-        corpo = json.dumps(dati).encode()
-        self.send_response(200)
-        self.send_header("Content-Type", "application/json; charset=utf-8")
-        self.send_header("Content-Length", str(len(corpo)))
-        self.end_headers()
-        self.wfile.write(corpo)
+        self._invia(200, json.dumps(dati).encode(), "application/json; charset=utf-8")
+
+    def _corpo_json(self):
+        n = min(int(self.headers.get("Content-Length") or 0), 200000)
+        try:
+            return json.loads(self.rfile.read(n) or b"null")
+        except ValueError:
+            return None
+
+    # ---------- GET ----------
+    def do_HEAD(self):
+        self.do_GET()
 
     def do_GET(self):
         u = urlparse(self.path)
-        q = parse_qs(u.query)
-        with blocco:
-            if u.path == "/api/cmd":
-                a = (q.get("azione") or [""])[0]
-                if a in ("play", "pausa", "toggle", "inizio"):
-                    stato["cmd_id"] += 1
-                    stato["cmd"] = a
-                return self._json({"ok": True, "id": stato["cmd_id"]})
-            if u.path == "/api/poll":
-                return self._json({"id": stato["cmd_id"], "azione": stato["cmd"]})
-            if u.path == "/api/stato":
-                eta = int(min(99999, time.time() - stato["tv_t"]))
-                return self._json({"eta": eta, "tv": stato["tv"]})
-            if u.path == "/api/info":
-                return self._json({"ip": IP, "tutti": [IP], "porta": PORTA})
-        return super().do_GET()
+        q = {k: v[0] for k, v in parse_qs(u.query).items()}
+        p = u.path
+        if p.startswith("/api/"):
+            return self._api_get(p, q)
+        return self._file(unquote(p))
 
+    def _api_get(self, p, q):
+        ora = time.time()
+        canale = q.get("canale", "tv")
+        with blocco:
+            if p == "/api/info":
+                return self._json({"ip": IP, "tutti": IPS, "porta": PORTA})
+            if p == "/api/cmd":
+                if q.get("azione") in ("play", "pausa", "toggle", "inizio"):
+                    comandi["id"] += 1
+                    comandi["azione"] = q["azione"]
+                return self._json({"ok": True, "id": comandi["id"]})
+            if p == "/api/poll":
+                return self._json(dict(comandi))
+            if p == "/api/stato":
+                dati, t = stati.get(canale, (None, 0))
+                return self._json({"eta": int(min(99999, ora - t)), "tv": dati})
+            if p == "/api/rtc/ricevi":
+                per = q.get("per", "")
+                if per == "pc":
+                    trasmettitori[canale] = {"visto": ora, "ascoltatori": int(q.get("n", "0") or 0)}
+                coda = [m for (t, m) in code.pop((canale, per), []) if ora - t < 30]
+                return self._json({"messaggi": coda})
+            if p == "/api/rtc/stato":
+                tr = trasmettitori.get(canale)
+                attivo = bool(tr and ora - tr["visto"] < 5)
+                dati, t = stati.get(canale, (None, 0))
+                return self._json({"attivo": attivo, "ascoltatori": tr["ascoltatori"] if attivo else 0,
+                                   "onda": dati if ora - t < 5 else None})
+        if p == "/api/config":
+            return self._json(leggi_config())
+        if p == "/api/radio":
+            brani = []
+            if not leggi_config()["radio"]:
+                return self._json({"attiva": False, "brani": []})
+            if os.path.isdir(CARTELLA_AUDIO):
+                for f in sorted(os.listdir(CARTELLA_AUDIO), key=str.lower):
+                    if f.lower().endswith(ESTENSIONI_AUDIO) and not f.startswith("."):
+                        brani.append({"file": "audio/" + f, "nome": nome_leggibile(f),
+                                      "mb": round(os.path.getsize(os.path.join(CARTELLA_AUDIO, f)) / 1048576, 1)})
+            return self._json({"attiva": True, "brani": brani})
+        self._invia(404, b"{}", "application/json")
+
+    # ---------- POST ----------
     def do_POST(self):
-        if urlparse(self.path).path == "/api/stato":
-            n = min(int(self.headers.get("Content-Length") or 0), 4000)
-            try:
-                dati = json.loads(self.rfile.read(n) or b"null")
-                with blocco:
-                    stato["tv"], stato["tv_t"] = dati, time.time()
-            except ValueError:
-                pass
-            return self._json({"ok": True})
-        self.send_error(404)
+        p = urlparse(self.path).path
+        q = {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
+        dati = self._corpo_json()
+        with blocco:
+            if p == "/api/stato":
+                if isinstance(dati, dict):
+                    stati[q.get("canale", "tv")] = (dati, time.time())
+                return self._json({"ok": True})
+            if p == "/api/config" and isinstance(dati, dict):
+                c = leggi_config()
+                if "radio" in dati:
+                    c["radio"] = bool(dati["radio"])
+                scrivi_config(c)
+                return self._json(c)
+            if p == "/api/rtc/invia" and isinstance(dati, dict):
+                canale, a = str(dati.get("canale", "tv")), str(dati.get("a", ""))
+                coda = code.setdefault((canale, a), [])
+                coda.append((time.time(), dati))
+                del coda[:-50]
+                # pulizia delle code abbandonate
+                ora = time.time()
+                for k in [k for k, v in code.items() if not v or ora - v[-1][0] > 60]:
+                    code.pop(k, None)
+                return self._json({"ok": True})
+        self._invia(404, b"{}", "application/json")
+
+    # ---------- file (con supporto Range, indispensabile per l'audio su iPhone) ----------
+    def _file(self, percorso):
+        # indirizzi corti per i QR code (QR più piccoli = più facili da inquadrare)
+        corti = {"/t": "/ascolta.html?canale=tv", "/d": "/ascolta.html?canale=desktop", "/r": "/radio-ascolto.html"}
+        if percorso in corti:
+            return self._invia(302, b"", "text/plain", {"Location": corti[percorso]})
+        if percorso in ("", "/"):
+            percorso = "/index.html"
+        completo = os.path.realpath(os.path.join(CARTELLA, percorso.lstrip("/")))
+        if not completo.startswith(CARTELLA + os.sep) or not os.path.isfile(completo):
+            return self._invia(404, "Non trovato".encode(), "text/plain; charset=utf-8")
+        tipo = mimetypes.guess_type(completo)[0] or "application/octet-stream"
+        if tipo.startswith("text/"):
+            tipo += "; charset=utf-8"
+        dim = os.path.getsize(completo)
+        inizio, fine, codice = 0, dim - 1, 200
+        rng = self.headers.get("Range")
+        m = re.match(r"bytes=(\d*)-(\d*)$", rng.strip()) if rng else None
+        if m and dim > 0:
+            if m.group(1):
+                inizio = int(m.group(1))
+                if m.group(2):
+                    fine = min(int(m.group(2)), dim - 1)
+            elif m.group(2):
+                inizio = max(0, dim - int(m.group(2)))
+            if inizio > fine or inizio >= dim:
+                return self._invia(416, b"", "text/plain", {"Content-Range": f"bytes */{dim}"})
+            codice = 206
+        lung = fine - inizio + 1 if dim else 0
+        self.send_response(codice)
+        self.send_header("Content-Type", tipo)
+        self.send_header("Content-Length", str(lung))
+        self.send_header("Accept-Ranges", "bytes")
+        self.send_header("Cache-Control", "no-cache")
+        if codice == 206:
+            self.send_header("Content-Range", f"bytes {inizio}-{fine}/{dim}")
+        self.end_headers()
+        if self.command == "HEAD" or lung == 0:
+            return
+        try:
+            with open(completo, "rb") as f:
+                f.seek(inizio)
+                resta = lung
+                while resta > 0:
+                    pezzo = f.read(min(65536, resta))
+                    if not pezzo:
+                        break
+                    self.wfile.write(pezzo)
+                    resta -= len(pezzo)
+        except (BrokenPipeError, ConnectionResetError):
+            pass
+
+
+class Server(ThreadingHTTPServer):
+    daemon_threads = True
+    allow_reuse_address = True
 
 
 if __name__ == "__main__":
-    srv = ThreadingHTTPServer(("0.0.0.0", PORTA), Gestore)
-    print("\n  ==============================================")
-    print("   TELECOMANDO TV ATTIVO")
-    print("  ==============================================\n")
-    print(f"   Sul PC della TV apri:   http://localhost:{PORTA}/tv.html")
-    print(f"   Sul telefono apri:      http://{IP}:{PORTA}/telecomando.html\n")
-    print("   Il telefono deve essere sulla STESSA rete Wi-Fi del PC.")
-    print("   Scrivi l'indirizzo con http:// all'inizio (non https).")
+    os.makedirs(CARTELLA_AUDIO, exist_ok=True)
+    try:
+        srv = Server(("0.0.0.0", PORTA), Gestore)
+    except OSError as e:
+        print(f"\n  ERRORE: la porta {PORTA} è già in uso (il programma è già aperto?).\n  {e}\n")
+        input("  Premi Invio per chiudere...")
+        sys.exit(1)
+    base = f"http://{IP}:{PORTA}"
+    print("\n  ==================================================")
+    print("   MOSTRA AC - PROGRAMMA PONTE ATTIVO")
+    print("  ==================================================\n")
+    print(f"   Indirizzo di questo PC:   {base}")
+    if len(IPS) > 1:
+        print("   (altri indirizzi: " + ", ".join(IPS[1:]) + ")")
+    print()
+    print(f"   TV ............ http://localhost:{PORTA}/tv.html")
+    print(f"   Desktop ....... http://localhost:{PORTA}/desktop.html")
+    print(f"   Telecomando ... {base}/telecomando.html")
+    print(f"   Radio ......... {base}/radio-ascolto.html")
+    print(f"   QR da stampare  http://localhost:{PORTA}/qr.html")
+    print()
+    print("   I telefoni devono essere collegati alla STESSA rete Wi-Fi del PC.")
     print("   NON chiudere questa finestra finché la mostra è aperta.\n")
-    webbrowser.open(f"http://localhost:{PORTA}/tv.html")
+    if PAGINA and PAGINA != "-":
+        webbrowser.open(f"http://localhost:{PORTA}/{PAGINA}")
     try:
         srv.serve_forever()
     except KeyboardInterrupt:

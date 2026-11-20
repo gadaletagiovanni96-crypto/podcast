@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>QR code e radio</title>
+<style>
+  :root { --blu-notte: #061a3a; --blu: #0b3d91; --giallo: #ffc72c; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", Arial, sans-serif; background: #e9edf5; color: var(--blu-notte); padding: 20px 14px 40px; }
+  .pannello { max-width: 960px; margin: 0 auto 20px; background: #fff; border-radius: 16px; padding: 20px 24px; box-shadow: 0 6px 24px rgba(0,0,0,0.12); }
+  h1 { font-size: 1.45rem; color: var(--blu); }
+  h2 { font-size: 1.1rem; color: var(--blu); margin: 18px 0 8px; }
+  p { margin: 6px 0 12px; color: #445; line-height: 1.45; }
+  .griglia { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+  label { font-weight: 700; font-size: .9rem; display: block; margin-bottom: 4px; }
+  input[type=text], select { width: 100%; padding: 10px 12px; border: 2px solid #c8d2e6; border-radius: 10px; font-size: 1rem; background: #fff; }
+  button { border: none; border-radius: 12px; padding: 11px 18px; font-size: .98rem; font-weight: 800; cursor: pointer; background: var(--giallo); color: var(--blu-notte); }
+  button.secondario { background: #dfe7f7; }
+  .nota { background: #fff7dc; border-left: 5px solid var(--giallo); padding: 10px 14px; border-radius: 8px; margin-top: 14px; font-size: .92rem; line-height: 1.5; }
+  .radio-box { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .pill { padding: 6px 12px; border-radius: 999px; font-weight: 800; font-size: .9rem; }
+  .pill.on { background: #d6f5e0; color: #116b34; } .pill.off { background: #fde0e3; color: #a3172a; }
+
+  .anteprime { max-width: 960px; margin: 0 auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+  .anteprima { background: #fff; border-radius: 14px; padding: 12px; text-align: center; box-shadow: 0 4px 16px rgba(0,0,0,0.1); }
+  .anteprima canvas { width: 100%; height: auto; border-radius: 10px; display: block; margin-bottom: 10px; }
+  .anteprima b { display: block; margin-bottom: 8px; }
+  .tutti { text-align: center; margin: 18px 0 0; }
+  @media (max-width: 700px) { .griglia { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+  <div class="pannello">
+    <h1>🖨️ QR code da stampare</h1>
+    <p>Qui generi i <b>PNG</b> da stampare e appendere accanto alle postazioni. Sugli schermi non compare nessun QR code.</p>
+
+    <h2>1 · Rete Wi-Fi della mostra</h2>
+    <div class="griglia">
+      <div><label>Nome della rete Wi-Fi</label><input type="text" id="rete" autocomplete="off" placeholder="es. Mostra AC"></div>
+      <div><label>Password del Wi-Fi <small>(vuota se non c'è)</small></label><input type="text" id="pwd" autocomplete="off"></div>
+    </div>
+
+    <h2>2 · Indirizzi dei PC</h2>
+    <p>Ogni QR deve puntare al PC giusto. L'indirizzo di <b>questo</b> PC è già inserito: se generi i QR di tutte le postazioni da qui, scrivi l'indirizzo degli altri PC (lo trovi nella finestra nera del programma su ciascun PC).</p>
+    <div class="griglia">
+      <div><label>📻 PC con gli audio della radio</label><input type="text" id="ipRadio" autocomplete="off"></div>
+      <div><label>📺 PC della TV</label><input type="text" id="ipTv" autocomplete="off"></div>
+      <div><label>🖥️ PC del desktop anni 2000</label><input type="text" id="ipDesk" autocomplete="off"></div>
+      <div><label>📱 Telecomando della TV <small>(per l'animatore)</small></label>
+        <select id="conTele"><option value="0">Non serve</option><option value="1">Genera anche questo</option></select></div>
+    </div>
+
+    <h2>3 · Radio dal telefono (questo PC)</h2>
+    <div class="radio-box">
+      <span>Audio trovati nella cartella <b>audio</b>: <b id="nBrani">…</b></span>
+      <span class="pill" id="radioStato">…</span>
+      <button class="secondario" id="btnRadio">…</button>
+    </div>
+
+    <div class="nota">
+      <b>Importante:</b> un QR stampato funziona solo se il PC ha <b>sempre lo stesso indirizzo</b>. Nelle impostazioni del router
+      imposta un <b>indirizzo IP fisso / riservato</b> (si chiama spesso <i>DHCP reservation</i> o <i>IP statico</i>) per ogni PC della mostra.
+      Dopo averlo fatto, rigenera i PNG se gli indirizzi sono cambiati.
+    </div>
+    <div class="tutti"><button id="btnTutti">⬇ Scarica tutti i PNG</button></div>
+  </div>
+
+  <div class="anteprime" id="anteprime"></div>
+
+<script src="qrcode.js"></script>
+<script src="diretta.js"></script>
+<script>
+(async () => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  let mioIp = location.hostname, porta = location.port || "8080";
+  try { const j = await MostraAC.info(); mioIp = j.ip; porta = j.porta; } catch {}
+
+  const salvati = (() => { try { return JSON.parse(localStorage.getItem("qr_png") || "{}"); } catch { return {}; } })();
+  $("rete").value = salvati.rete || ""; $("pwd").value = salvati.pwd || "";
+  $("ipRadio").value = salvati.ipRadio || mioIp; $("ipTv").value = salvati.ipTv || mioIp; $("ipDesk").value = salvati.ipDesk || mioIp;
+  $("conTele").value = salvati.conTele || "0";
+
+  /* ---------- radio on/off ---------- */
+  let radioOn = true;
+  async function statoRadio() {
+    try {
+      const c = await (await fetch("/api/config", { cache: "no-store" })).json(); radioOn = !!c.radio;
+      const j = await (await fetch("/api/radio", { cache: "no-store" })).json();
+      $("nBrani").textContent = radioOn ? (j.brani || []).length : "—";
+    } catch { $("nBrani").textContent = "?"; }
+    $("radioStato").textContent = radioOn ? "RADIO ATTIVA" : "RADIO SPENTA";
+    $("radioStato").className = "pill " + (radioOn ? "on" : "off");
+    $("btnRadio").textContent = radioOn ? "Spegni la radio" : "Accendi la radio";
+  }
+  $("btnRadio").onclick = async () => {
+    await fetch("/api/config", { method: "POST", body: JSON.stringify({ radio: !radioOn }), headers: { "Content-Type": "application/json" } }).catch(() => {});
+    statoRadio();
+  };
+  statoRadio();
+
+  /* ---------- disegno dei cartelli PNG ---------- */
+  function rr(x, cx, cy, w, h, r) { x.beginPath(); x.moveTo(cx + r, cy); x.arcTo(cx + w, cy, cx + w, cy + h, r); x.arcTo(cx + w, cy + h, cx, cy + h, r); x.arcTo(cx, cy + h, cx, cy, r); x.arcTo(cx, cy, cx + w, cy, r); x.closePath(); }
+  function cartello({ num, titolo, evid, sotto, testoQr, righe }) {
+    const W = 1200, H = 1600, c = document.createElement("canvas"); c.width = W; c.height = H;
+    const x = c.getContext("2d");
+    const g = x.createLinearGradient(0, 0, W * 0.4, H); g.addColorStop(0, "#1552b8"); g.addColorStop(0.55, "#0b3d91"); g.addColorStop(1, "#061a3a");
+    x.fillStyle = "#ffc72c"; rr(x, 0, 0, W, H, 70); x.fill();
+    x.fillStyle = g; rr(x, 18, 18, W - 36, H - 36, 56); x.fill();
+    const font = (peso, px) => `${peso} ${px}px "Segoe UI", Arial, sans-serif`;
+    // numero
+    x.fillStyle = "#ffc72c"; x.beginPath(); x.arc(W / 2, 150, 62, 0, Math.PI * 2); x.fill();
+    x.fillStyle = "#061a3a"; x.font = font(900, 74); x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(String(num), W / 2, 154);
+    // titolo con parola evidenziata in giallo
+    x.font = font(800, 84); x.textBaseline = "alphabetic";
+    const a = titolo + " ", wa = x.measureText(a).width, wb = x.measureText(evid).width, sx = (W - wa - wb) / 2;
+    x.textAlign = "left"; x.fillStyle = "#fff"; x.fillText(a, sx, 320); x.fillStyle = "#ffc72c"; x.fillText(evid, sx + wa, 320);
+    x.textAlign = "center"; x.fillStyle = "rgba(255,255,255,0.85)"; x.font = font(500, 40); x.fillText(sotto, W / 2, 390);
+    // QR
+    qrcode.stringToBytes = qrcode.stringToBytesFuncs["UTF-8"];
+    const q = qrcode(0, "M"); q.addData(testoQr, "Byte"); q.make();
+    const n = q.getModuleCount(), lato = 820, bx = (W - lato) / 2, by = 450;
+    x.fillStyle = "#fff"; rr(x, bx, by, lato, lato, 36); x.fill();
+    const margine = 60, mod = Math.floor((lato - margine * 2) / n), off = bx + (lato - mod * n) / 2, offy = by + (lato - mod * n) / 2;
+    x.fillStyle = "#061a3a";
+    for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) x.fillRect(off + k * mod, offy + r * mod, mod, mod);
+    // righe sotto
+    let y = by + lato + 90;
+    righe.forEach(([testo, giallo, mono]) => {
+      x.font = mono ? `600 40px Consolas, "Courier New", monospace` : font(700, 46);
+      x.fillStyle = giallo ? "#ffc72c" : "#fff"; x.fillText(testo, W / 2, y); y += 64;
+    });
+    x.font = font(700, 34); x.fillStyle = "rgba(255,255,255,0.55)"; x.fillText("AZIONE CATTOLICA", W / 2, H - 70);
+    return c;
+  }
+
+  let carte = [];
+  function disegna() {
+    const rete = $("rete").value.trim(), pwd = $("pwd").value;
+    const v = id => $(id).value.trim();
+    try { localStorage.setItem("qr_png", JSON.stringify({ rete, pwd, ipRadio: v("ipRadio"), ipTv: v("ipTv"), ipDesk: v("ipDesk"), conTele: $("conTele").value })); } catch {}
+    const url = (ip, p) => "http://" + ip + ":" + porta + p;
+    carte = [];
+    let n = 1;
+    const dopo = rete ? "Dopo esserti collegato al Wi-Fi inquadra qui" : "Collegati al Wi-Fi della mostra e inquadra qui";
+    if (rete) carte.push({ file: "QR-1-WiFi.png", nome: "Collegati al Wi-Fi", num: n++, titolo: "Collegati al", evid: "Wi-Fi",
+      sotto: "Inquadra con la fotocamera e tocca «Connetti»", testoQr: MostraAC.testoWifi(rete, pwd),
+      righe: [["Rete: " + rete, true], ...(pwd ? [["Password: " + pwd, false]] : [])] });
+    const base = n;
+    if (v("ipRadio")) carte.push({ file: "QR-Radio.png", nome: "Radio", num: base, titolo: "Ascolta la", evid: "radio", sotto: dopo, testoQr: url(v("ipRadio"), "/r"), righe: [["🎧 Usa le tue cuffie", false], [url(v("ipRadio"), "/r"), true, true]] });
+    if (v("ipTv")) carte.push({ file: "QR-TV.png", nome: "Audio della TV", num: base, titolo: "Audio della", evid: "TV", sotto: dopo, testoQr: url(v("ipTv"), "/t"), righe: [["🎧 Ascolta in cuffia, in diretta", false], [url(v("ipTv"), "/t"), true, true]] });
+    if (v("ipDesk")) carte.push({ file: "QR-Desktop.png", nome: "Audio del PC anni 2000", num: base, titolo: "Audio del", evid: "PC", sotto: dopo, testoQr: url(v("ipDesk"), "/d"), righe: [["🎧 Ascolta in cuffia, in diretta", false], [url(v("ipDesk"), "/d"), true, true]] });
+    if ($("conTele").value === "1" && v("ipTv")) carte.push({ file: "QR-Telecomando.png", nome: "Telecomando (animatore)", num: "📱", titolo: "Telecomando", evid: "TV", sotto: "Solo per l'animatore", testoQr: url(v("ipTv"), "/telecomando.html"), righe: [[url(v("ipTv"), "/telecomando.html"), true, true]] });
+
+    const box = $("anteprime"); box.innerHTML = "";
+    carte.forEach(k => {
+      const d = document.createElement("div"); d.className = "anteprima";
+      const cv = cartello(k); k.canvas = cv;
+      const b = document.createElement("b"); b.textContent = k.nome;
+      const btn = document.createElement("button"); btn.textContent = "⬇ Scarica PNG"; btn.onclick = () => scarica(k);
+      d.append(b, cv, btn); box.appendChild(d);
+    });
+  }
+  function scarica(k) {
+    k.canvas.toBlob(blob => {
+      const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = k.file;
+      document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    }, "image/png");
+  }
+  $("btnTutti").onclick = () => carte.forEach((k, i) => setTimeout(() => scarica(k), i * 400));
+  document.querySelectorAll("input, select").forEach(i => i.addEventListener("input", disegna));
+  disegna();
+})();
+</script>
+</body>
+</html>

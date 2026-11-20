@@ -124,25 +124,57 @@ Se **nessun video è in riproduzione** e nessuno tocca mouse/tastiera per il tem
 
 ---
 
-# 📱 Telecomando della TV dal telefono
+---
 
-Con un telefono collegato **alla stessa rete Wi-Fi** del PC della TV puoi fare **PLAY / PAUSA** e **INIZIO**, e vedere cosa sta trasmettendo la TV.
+# 🌐 Programma ponte: telecomando, radio e audio in cuffia
 
-Serve un piccolo programma "ponte" che resta acceso sul PC (non va installato niente).
+Tutto funziona sulla **rete Wi-Fi locale della mostra, senza Internet**. Visitatori e PC devono essere collegati allo stesso Wi-Fi.
 
-## Windows
-1. Tieni tutti i file nella **stessa cartella** (`tv.html`, `telecomando.html`, `server.ps1`, `avvia-telecomando-windows.bat`).
-2. Doppio clic su **`avvia-telecomando-windows.bat`** → rispondi **Sì** alla richiesta di Windows (serve per aprire la porta alla rete Wi-Fi). Se compare l'avviso di Windows SmartScreen: *Ulteriori informazioni → Esegui comunque*.
-3. Si apre una finestra nera con due indirizzi e **la TV si apre da sola nel browser** (`http://localhost:8080/tv.html`). **Non chiudere la finestra nera.**
-4. Sul telefono apri l'indirizzo verde scritto nella finestra, tipo `http://192.168.1.23:8080/telecomando.html`, e tocca **"Accendi il telecomando"**: va a schermo intero (su Android). Su iPhone, per averlo a tutto schermo, aggiungilo alla schermata Home (Condividi → Aggiungi alla schermata Home) e aprilo da lì.
+Il programma ponte (`server.py`) va avviato sui PC della mostra e fa tre cose:
+1. **Telecomando della TV** dal telefono dell'animatore.
+2. **Radio dal telefono**: i visitatori inquadrano un QR stampato e ascoltano gli audio nelle proprie cuffie (ognuno per conto suo, con Play/Pausa, Inizio, +10 s e barra di scorrimento). Non serve nessun tablet o PC per la radio.
+3. **Audio in diretta di TV e desktop** nelle cuffie dei visitatori (ritardo di circa 0,1–0,3 secondi).
 
-## Mac
-Doppio clic su **`avvia-telecomando-mac.command`** (la prima volta: tasto destro → Apri). In alternativa, dal Terminale: `python3 server.py`.
+Nessun QR compare sugli schermi: i QR si **stampano** (PNG).
 
-## Da sapere
-- L'indirizzo per il telefono lo trovi anche nel **pannello animatore della TV** (tasto X), sezione *Telecomando dal telefono*.
-- Aprendo la TV da `http://localhost:8080/tv.html` il browser la considera un sito diverso dal file aperto con doppio clic: **la prima volta ricarica il video** dal pannello animatore.
-- Il telecomando funziona solo se la TV è aperta tramite il programma ponte (non con doppio clic su `tv.html` e non da GitHub Pages).
-- Alcune reti Wi-Fi pubbliche/ospiti non lasciano parlare i dispositivi tra loro: in quel caso usa un router tuo o l'**hotspot del telefono** (collegandoci anche il PC).
-- Chiunque sia sulla stessa rete e conosca l'indirizzo può usare il telecomando: usa una rete con password.
-- In alternativa al telefono funziona anche un **telecomando per presentazioni** USB/Bluetooth (le frecce e i tasti pagina sono già collegati).
+## Avvio
+| PC | Windows | Mac |
+|---|---|---|
+| TV | `AVVIA-TV.bat` | `AVVIA-TV-mac.command` |
+| Desktop anni 2000 | `AVVIA-DESKTOP.bat` | `AVVIA-DESKTOP-mac.command` |
+| PC solo per la radio (se non usi quello della TV) | `AVVIA-SOLO-RADIO.bat` | — |
+
+- Serve **Python** (gratis). Se manca, il file `.bat` prova a installarlo da solo: **fallo prima della mostra con Internet**. In alternativa: https://www.python.org/downloads/ (spunta *Add python.exe to PATH*).
+- Rispondi **Sì** alla richiesta di Windows (serve ad aprire la porta 8080 alla rete). Se Windows chiede se consentire Python sulle reti, consenti.
+- Si apre una **finestra nera** (non chiuderla) e la postazione si apre da sola nel browser.
+- La prima volta ricarica i video dal pannello animatore (tasto X): la postazione aperta dal programma è per il browser un sito diverso da quella aperta con doppio clic.
+
+## Radio
+1. Copia gli audio nella cartella **`audio`** accanto al programma (sul PC della TV, oppure su un PC dedicato). Per scegliere l'ordine inizia i nomi con un numero: `01 - Benvenuti.mp3`, `02 - La nostra storia.mp3` (il numero non viene mostrato).
+2. I visitatori vedono l'elenco e scelgono cosa ascoltare.
+3. **Accendere/spegnere la radio**: dalla pagina `http://localhost:8080/qr.html` oppure dal pannello animatore di TV o desktop (voce *Radio dal telefono*).
+
+## Audio in cuffia di TV e desktop
+Pannello animatore (tasto X) → **Ascolto dal telefono: Attivo/Spento**.
+- **Audio anche dalle casse**: sì, oppure solo nelle cuffie.
+- Se è spento tutto funziona come prima.
+- Il visitatore apre il QR, tocca **ASCOLTA** e sente l'audio di quello che va sullo schermo; vede anche il titolo del video. Deve tenere lo schermo del telefono acceso.
+- Con un PC normale e un buon router reggono senza problemi 20–30 ascoltatori per postazione.
+
+## QR code da stampare (PNG)
+Apri sul PC **`http://localhost:8080/qr.html`** (si apre da solo con `AVVIA-SOLO-RADIO.bat`):
+1. scrivi nome e password del Wi-Fi (QR per collegarsi alla rete in un attimo);
+2. controlla gli indirizzi dei PC di radio, TV e desktop (quello del PC in uso è già inserito; gli altri li leggi nella finestra nera di ciascun PC);
+3. premi **Scarica tutti i PNG** e stampali.
+
+> **Importante:** i QR stampati funzionano solo se i PC hanno **sempre lo stesso indirizzo**. Nel router imposta un **IP fisso/riservato** (*DHCP reservation*) per ogni PC della mostra.
+
+## Il router
+- Usa un **router vero** (anche quello di casa), non l'hotspot di un telefono: di solito regge solo 5–10 dispositivi.
+- Nelle impostazioni **disattiva l'isolamento dei client** (*AP isolation* / *rete ospiti*), altrimenti i telefoni non raggiungono i PC.
+- Se possibile usa la rete a **5 GHz**.
+- Più PC sulla stessa rete non si danno fastidio: ognuno ha il suo indirizzo e ogni QR punta al suo PC.
+
+## Telecomando della TV
+Sul telefono dell'animatore apri l'indirizzo *Telecomando* scritto nella finestra nera (o stampa il suo QR da `qr.html`), tocca **Accendi il telecomando**: PLAY/PAUSA e INIZIO. Su iPhone, per averlo a tutto schermo, aggiungilo alla schermata Home.
+In alternativa funziona anche un telecomando per presentazioni USB/Bluetooth.
