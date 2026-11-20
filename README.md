@@ -65,3 +65,31 @@ I file caricati restano salvati nel browser di quel dispositivo: anche chiudendo
 - **Android (Chrome)**: schermo intero e blocco funzionano.
 - **iPhone (Safari)**: Apple non permette lo schermo intero alle pagine web; usa *Condividi → Aggiungi alla schermata Home* e attiva *Impostazioni → Accessibilità → Accesso guidato* per bloccare il telefono sull'app. Il volume si regola con i tasti del telefono.
 - Per aprire la pagina su un telefono la cosa più semplice è pubblicarla online (es. GitHub Pages) e aprire il link.
+
+---
+
+# 📺 TV AC (`tv.html`)
+
+Terza postazione: trasmette un video scelto dall'animatore, con lo stile di un vecchio televisore / videoregistratore (schermata blu, scritte verdi "▶ PLAY", "❚❚ PAUSA", effetto neve). Pensata per essere proiettata su una **TV a tubo catodico** (formato 4:3, scritte grandi e tenute lontane dai bordi).
+
+## Come si usa
+1. Apri `tv.html` con Chrome/Edge sul PC collegato alla TV e clicca (o premi un tasto) per accenderla.
+2. Lucchetto in alto a destra → password (predefinita **`azione2026`**, separata dalle altre postazioni).
+3. **"+ Carica video dal PC"** → scegli il video (MP4 consigliato), selezionalo e premi **"Salva e torna alla TV"**.
+
+## Comandi per i ragazzi
+- **PLAY / PAUSA** (o clic in un punto qualsiasi dello schermo).
+- **INIZIO**: riporta il video all'inizio.
+- Tastiera / telecomando da presentazione: `Spazio`, `Invio`, `→`, `Pagina giù` = play/pausa · `←`, `Pagina su`, `Home`, `R` = inizio.
+- A fine video **riparte da capo**; se resta in pausa **10 secondi** torna da solo all'inizio (con conto alla rovescia a schermo).
+- Mentre il video va, comandi e cursore spariscono dopo 3 secondi e ricompaiono muovendo il mouse.
+
+## Impostazioni (pannello animatore)
+- Scritta della schermata blu e numero del canale.
+- Adattamento del video: intero con bande nere oppure riempi lo schermo.
+- Effetto tubo catodico (righe, sfarfallio): **spento** se usi una TV vera, leggero/forte su un monitor moderno.
+- Volume e cambio password.
+
+## Consigli per la TV a tubo
+- Imposta l'uscita del PC in 4:3 (es. 800×600 o 1024×768) e, se la TV lo permette, scegli "duplica schermo".
+- I video lunghi occupano spazio nel browser: meglio file MP4 sotto 1–2 GB.

@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#000000">
+<title>TV AC</title>
+<style>
+  :root {
+    --blu-vcr: #0a2fb8;
+    --blu-notte: #061a3a;
+    --giallo: #ffc72c;
+    --bianco: #f4f7ff;
+    --verde-osd: #7dff8a;
+    --rosso: #ff4d5e;
+    --font-osd: "Lucida Console", "Consolas", "Courier New", monospace;
+    --safe: 7vmin;              /* margine per l'overscan dei televisori a tubo */
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: #000; }
+  body {
+    font-family: var(--font-osd);
+    color: var(--bianco);
+    overflow: hidden;
+    user-select: none; -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+    cursor: default;
+  }
+  body.cursore-nascosto, body.cursore-nascosto * { cursor: none !important; }
+  input, select { user-select: text; -webkit-user-select: text; }
+  button { font-family: inherit; }
+
+  /* ===== schermo ===== */
+  .schermo { position: fixed; inset: 0; background: #000; overflow: hidden; }
+  video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; }
+  video.riempi { object-fit: cover; }
+
+  /* effetti tubo catodico */
+  .crt { position: fixed; inset: 0; pointer-events: none; z-index: 10; }
+  .crt .righe { position: absolute; inset: 0; background: repeating-linear-gradient(0deg, rgba(0,0,0,0.28) 0 2px, transparent 2px 4px); mix-blend-mode: multiply; }
+  .crt .vignetta { position: absolute; inset: 0; background: radial-gradient(ellipse at center, transparent 58%, rgba(0,0,0,0.55) 100%); }
+  .crt .sfarfallio { position: absolute; inset: 0; background: rgba(255,255,255,0.025); animation: flicker .12s steps(2) infinite; }
+  @keyframes flicker { 50% { opacity: 0; } }
+  .crt .banda { position: absolute; left: 0; right: 0; height: 18vh; background: linear-gradient(180deg, transparent, rgba(255,255,255,0.05), transparent); animation: banda 7s linear infinite; }
+  @keyframes banda { from { top: -20vh; } to { top: 110vh; } }
+  body.crt-leggero .crt .righe { opacity: .45; }
+  body.crt-leggero .crt .sfarfallio, body.crt-leggero .crt .banda { display: none; }
+  body.crt-off .crt { display: none; }
+
+  .glow { text-shadow: 0 0 6px currentColor, 0 0 16px rgba(255,255,255,0.25); }
+
+  /* ===== schermata blu "videoregistratore" (in attesa) ===== */
+  .blu {
+    position: absolute; inset: 0; z-index: 3; background: var(--blu-vcr);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center;
+    padding: var(--safe) var(--safe) calc(var(--safe) + 16vmin);
+    transition: opacity .25s;
+  }
+  .blu.nascosta { opacity: 0; pointer-events: none; }
+  .blu .canale { position: absolute; top: var(--safe); left: var(--safe); font-size: 6vmin; font-weight: bold; color: var(--verde-osd); }
+  .blu .ora { position: absolute; top: var(--safe); right: calc(var(--safe) + 11vmin); font-size: 6vmin; font-weight: bold; }
+  .blu h1 { font-size: 9vmin; letter-spacing: .5vmin; font-weight: bold; color: var(--giallo); line-height: 1.1; }
+  .blu .titolo-video { font-size: 5.2vmin; margin-top: 3vmin; max-width: 86vw; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .blu .premi { margin-top: 5vmin; font-size: 6.5vmin; font-weight: bold; animation: lampeggia 1.2s steps(1) infinite; }
+  .blu .premi b { background: var(--giallo); color: var(--blu-notte); padding: 0 2vmin; text-shadow: none; }
+  @keyframes lampeggia { 50% { opacity: 0; } }
+  .barre { display: flex; width: min(70vw, 90vmin); height: 6vmin; margin-top: 5vmin; border: .6vmin solid #fff; }
+  .barre i { flex: 1; }
+
+  /* ===== OSD (scritte a schermo stile videoregistratore) ===== */
+  .osd { position: absolute; z-index: 5; font-weight: bold; color: var(--verde-osd); pointer-events: none; }
+  .osd-stato { top: var(--safe); left: var(--safe); font-size: 7vmin; transition: opacity .4s; }
+  .osd-stato.svanisci { opacity: 0; }
+  .osd-avviso { top: calc(var(--safe) + 10vmin); left: var(--safe); right: var(--safe); font-size: 4.2vmin; color: var(--bianco); }
+  .osd-avviso span { background: rgba(0,0,0,0.65); padding: .4vmin 1.6vmin; }
+
+  /* ===== comandi ===== */
+  .comandi {
+    position: absolute; z-index: 6; left: var(--safe); right: var(--safe); bottom: var(--safe);
+    display: flex; flex-direction: column; gap: 2.4vmin;
+    transition: opacity .4s, transform .4s;
+  }
+  body.in-attesa .barra-tempo { display: none; }
+  .comandi.nascosti { opacity: 0; transform: translateY(3vmin); pointer-events: none; }
+  .barra-tempo { display: flex; align-items: center; gap: 2.4vmin; font-size: 4vmin; font-weight: bold; text-shadow: 0 0 6px #000, 0 0 2px #000; }
+  .segmenti { flex: 1; display: flex; gap: .6vmin; height: 3vmin; background: rgba(0,0,0,0.55); padding: .5vmin; border: .4vmin solid rgba(255,255,255,0.8); }
+  .segmenti i { flex: 1; background: rgba(255,255,255,0.12); }
+  .segmenti i.pieno { background: var(--giallo); box-shadow: 0 0 6px rgba(255,199,44,0.7); }
+  .pulsanti { display: flex; justify-content: center; gap: 4vmin; }
+  .tasto {
+    border: .6vmin solid #fff; background: var(--blu-vcr); color: #fff; cursor: pointer;
+    font-size: 5vmin; font-weight: bold; padding: 1.8vmin 4.5vmin; min-height: 12vmin;
+    display: inline-flex; align-items: center; gap: 2vmin; letter-spacing: .4vmin;
+    box-shadow: .8vmin .8vmin 0 rgba(0,0,0,0.7);
+    transition: transform .08s, box-shadow .08s;
+  }
+  .tasto:active { transform: translate(.6vmin,.6vmin); box-shadow: .2vmin .2vmin 0 rgba(0,0,0,0.7); }
+  .tasto.principale { background: var(--giallo); color: var(--blu-notte); border-color: var(--giallo); min-width: 36vmin; justify-content: center; }
+  .tasto svg { width: 5.5vmin; height: 5.5vmin; }
+  .tasto:disabled { opacity: .4; cursor: not-allowed; }
+
+  .lucchetto {
+    position: absolute; z-index: 7; top: var(--safe); right: var(--safe);
+    width: 8vmin; height: 8vmin; border: .4vmin solid rgba(255,255,255,0.5); background: rgba(0,0,0,0.35);
+    color: rgba(255,255,255,0.75); display: grid; place-items: center; cursor: pointer; transition: opacity .4s;
+  }
+  .lucchetto svg { width: 4vmin; height: 4vmin; }
+  .lucchetto.nascosto { opacity: 0; pointer-events: none; }
+
+  /* rumore "neve" e accensione */
+  canvas#neve { position: absolute; inset: 0; width: 100%; height: 100%; z-index: 8; image-rendering: pixelated; opacity: 0; pointer-events: none; transition: opacity .15s; }
+  canvas#neve.attiva { opacity: 1; }
+  .accensione { position: fixed; inset: 0; z-index: 9; background: #000; pointer-events: none; display: none; }
+  .accensione::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 100%; transform: translateY(-50%) scaleY(0.004) scaleX(0); background: #fff; box-shadow: 0 0 40px #fff; }
+  .accensione.vai { display: block; animation: spegni .7s ease-in forwards .45s; }
+  .accensione.vai::after { animation: tubo .5s ease-out forwards; }
+  @keyframes tubo { 0% { transform: translateY(-50%) scaleY(0.004) scaleX(0); } 50% { transform: translateY(-50%) scaleY(0.004) scaleX(1); } 100% { transform: translateY(-50%) scaleY(1) scaleX(1); opacity: 0; } }
+  @keyframes spegni { to { opacity: 0; } }
+
+  /* ===== avvio ===== */
+  .avvio { position: fixed; inset: 0; z-index: 30; background: #000; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: var(--safe); cursor: pointer; }
+  .avvio.nascosto { display: none; }
+  .avvio .tv-icona { width: 22vmin; height: 22vmin; color: var(--giallo); margin-bottom: 4vmin; }
+  .avvio h2 { font-size: 7vmin; color: var(--giallo); }
+  .avvio p { font-size: 4vmin; margin-top: 2vmin; opacity: .85; }
+  .avvio .tasto { margin-top: 6vmin; }
+
+  /* ===== overlay / pannello ===== */
+  .overlay { position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center; background: rgba(0,0,0,0.8); padding: 3vmin; }
+  .overlay.show { display: flex; }
+  .modal { background: var(--blu-vcr); border: 4px solid #fff; box-shadow: 10px 10px 0 rgba(0,0,0,0.7); padding: 26px 28px; width: min(560px, 100%); max-height: 100%; overflow: auto; text-align: center; font-size: 17px; }
+  .modal.largo { width: min(760px, 100%); text-align: left; }
+  .modal h3 { font-size: 26px; color: var(--giallo); margin-bottom: 8px; }
+  .modal p { margin-bottom: 16px; opacity: .9; line-height: 1.4; }
+  .modal .azioni { display: flex; gap: 12px; justify-content: center; margin-top: 18px; flex-wrap: wrap; }
+  .btn { border: 3px solid #fff; background: transparent; color: #fff; padding: 11px 18px; font-size: 16px; font-weight: bold; cursor: pointer; letter-spacing: 1px; box-shadow: 4px 4px 0 rgba(0,0,0,0.6); }
+  .btn:active { transform: translate(3px,3px); box-shadow: 1px 1px 0 rgba(0,0,0,0.6); }
+  .btn-giallo { background: var(--giallo); border-color: var(--giallo); color: var(--blu-notte); }
+  .btn-rosso { background: var(--rosso); border-color: var(--rosso); }
+  .campo { width: 100%; padding: 12px 14px; border: 3px solid #fff; background: rgba(0,0,0,0.3); color: #fff; font-size: 17px; font-family: inherit; outline: none; }
+  .campo:focus { border-color: var(--giallo); }
+  select.campo option { color: #000; background: #fff; }
+  .errore { color: #ffb3bb; font-weight: bold; margin-top: 8px; min-height: 1.3em; }
+  .shake { animation: shake .4s; }
+  @keyframes shake { 20%,60%{ transform: translateX(-10px) } 40%,80%{ transform: translateX(10px) } }
+  .sez { color: var(--giallo); font-weight: bold; margin: 20px 0 8px; font-size: 18px; }
+  .libreria { display: flex; flex-direction: column; gap: 8px; }
+  .elemento { display: flex; align-items: center; gap: 12px; border: 3px solid rgba(255,255,255,0.4); padding: 10px 12px; cursor: pointer; background: rgba(0,0,0,0.2); }
+  .elemento.attivo { border-color: var(--giallo); background: rgba(255,199,44,0.15); }
+  .elemento .sel { width: 20px; height: 20px; border: 3px solid #fff; flex: none; display: grid; place-items: center; }
+  .elemento.attivo .sel { border-color: var(--giallo); }
+  .elemento.attivo .sel::after { content: ""; width: 8px; height: 8px; background: var(--giallo); }
+  .elemento .info { flex: 1; min-width: 0; }
+  .elemento .info b { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .elemento .info small { opacity: .75; }
+  .elemento .del { border: 2px solid #ffb3bb; background: transparent; color: #ffb3bb; width: 38px; height: 38px; cursor: pointer; font-size: 18px; flex: none; }
+  .vuota { opacity: .8; padding: 8px 0; }
+  .carica { display: block; text-align: center; border: 3px dashed rgba(255,255,255,0.6); color: var(--giallo); padding: 14px; font-weight: bold; cursor: pointer; margin-top: 10px; }
+  .carica input { display: none; }
+  .griglia { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+  .griglia label { display: block; font-weight: bold; margin-bottom: 6px; font-size: 15px; }
+  .griglia .full { grid-column: 1 / -1; }
+  input[type=range] { width: 100%; accent-color: var(--giallo); }
+  .progresso { height: 10px; background: rgba(0,0,0,0.4); border: 2px solid #fff; margin-top: 10px; display: none; }
+  .progresso.show { display: block; }
+  .progresso div { height: 100%; width: 0; background: var(--giallo); }
+
+  .toast { position: fixed; left: 50%; top: var(--safe); transform: translateX(-50%); z-index: 60; background: #000; border: 3px solid var(--verde-osd); color: var(--verde-osd); padding: 12px 20px; font-weight: bold; font-size: 3.4vmin; display: none; max-width: 86vw; text-align: center; }
+  .toast.show { display: block; }
+
+  @media (max-width: 600px) { .griglia { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<div class="schermo" id="schermo">
+  <video id="video" playsinline preload="auto"></video>
+
+  <!-- schermata blu in attesa -->
+  <div class="blu" id="schermataBlu">
+    <div class="canale glow" id="txtCanale">CH 03</div>
+    <div class="ora glow" id="txtOra">--:--</div>
+    <h1 class="glow" id="txtTitolo">TV AC</h1>
+    <div class="titolo-video glow" id="txtVideo">NESSUN VIDEO</div>
+    <div class="barre" id="barre"></div>
+    <div class="premi glow" id="txtPremi">PREMI <b>▶ PLAY</b></div>
+  </div>
+
+  <div class="osd osd-stato glow" id="osdStato"></div>
+  <div class="osd osd-avviso" id="osdAvviso"></div>
+
+  <button class="lucchetto" id="btnLucchetto" aria-label="Area riservata">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"><rect x="4" y="11" width="16" height="10"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+  </button>
+
+  <div class="comandi" id="comandi">
+    <div class="barra-tempo">
+      <span id="tempoOra">00:00</span>
+      <div class="segmenti" id="segmenti"></div>
+      <span id="tempoTot">00:00</span>
+    </div>
+    <div class="pulsanti">
+      <button class="tasto" id="btnInizio">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="4" y="5" width="3" height="14"/><path d="M20 5v14L9 12z"/></svg>
+        INIZIO
+      </button>
+      <button class="tasto principale" id="btnPlay">
+        <svg viewBox="0 0 24 24" fill="currentColor" id="icoPlay"><path d="M7 4v16l13-8z"/></svg>
+        <span id="lblPlay">PLAY</span>
+      </button>
+    </div>
+  </div>
+
+  <canvas id="neve" width="200" height="150"></canvas>
+</div>
+
+<div class="crt"><div class="righe"></div><div class="vignetta"></div><div class="sfarfallio"></div><div class="banda"></div></div>
+<div class="accensione" id="accensione"></div>
+
+<!-- Avvio -->
+<div class="avvio" id="avvio">
+  <svg class="tv-icona glow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M8 2l4 4 4-4"/><rect x="2" y="6" width="20" height="15" rx="2"/><rect x="4.5" y="8.5" width="12" height="10" rx="1.5"/><circle cx="19" cy="11" r="1"/><circle cx="19" cy="15" r="1"/></svg>
+  <h2 class="glow">ACCENDI LA TV</h2>
+  <p>Clicca o premi un tasto qualsiasi</p>
+  <button class="tasto principale" id="btnAvvia">⏻ ACCENDI</button>
+</div>
+
+<!-- Password -->
+<div class="overlay" id="ovPassword">
+  <div class="modal" id="modalPassword">
+    <h3>🔒 AREA RISERVATA</h3>
+    <p>Inserisci la password dell'animatore.</p>
+    <input type="password" class="campo" id="inPassword" placeholder="PASSWORD" autocomplete="off" style="text-align:center">
+    <div class="errore" id="errPassword"></div>
+    <div class="azioni">
+      <button class="btn" id="btnPwdAnnulla">ANNULLA</button>
+      <button class="btn btn-giallo" id="btnPwdOk">CONFERMA</button>
+    </div>
+  </div>
+</div>
+
+<!-- Uscita dal fullscreen -->
+<div class="overlay" id="ovFullscreen">
+  <div class="modal">
+    <h3>SEGNALE INTERROTTO</h3>
+    <p>La TV è uscita dallo schermo intero.</p>
+    <div class="azioni"><button class="btn btn-giallo" id="btnTornaFs">TORNA ALLA TV</button></div>
+    <div class="azioni"><button class="btn" id="btnFsAdmin">🔒 SONO L'ANIMATORE</button></div>
+  </div>
+</div>
+
+<!-- Pannello animatore -->
+<div class="overlay" id="ovAdmin">
+  <div class="modal largo">
+    <h3>⚙ PANNELLO ANIMATORE</h3>
+    <p>Scegli quale video trasmettere. I video caricati restano salvati in questo browser anche se chiudi la pagina.</p>
+
+    <div class="sez">▶ VIDEO DISPONIBILI</div>
+    <div class="libreria" id="libreria"></div>
+    <label class="carica">+ CARICA VIDEO DAL PC
+      <input type="file" id="inFile" accept="video/*,.mp4,.webm,.mov,.m4v,.ogv" multiple>
+    </label>
+    <div class="progresso" id="progresso"><div></div></div>
+
+    <div class="sez">⚙ IMPOSTAZIONI</div>
+    <div class="griglia">
+      <div><label>Scritta sulla schermata blu</label><input class="campo" id="setTitolo" maxlength="30"></div>
+      <div><label>Canale</label><input class="campo" id="setCanale" maxlength="8"></div>
+      <div><label>Adattamento del video</label>
+        <select class="campo" id="setAdatta">
+          <option value="contain">Intero (con bande nere)</option>
+          <option value="cover">Riempi lo schermo (taglia i bordi)</option>
+        </select>
+      </div>
+      <div><label>Effetto tubo catodico</label>
+        <select class="campo" id="setCrt">
+          <option value="off">Spento (consigliato su TV vera)</option>
+          <option value="leggero">Leggero</option>
+          <option value="forte">Forte (per monitor moderni)</option>
+        </select>
+      </div>
+      <div class="full"><label>Volume: <span id="lblVolume">100</span>%</label><input type="range" id="setVolume" min="0" max="100" step="5"></div>
+      <div class="full"><label>Nuova password <small style="font-weight:normal;opacity:.75">(lascia vuoto per non cambiarla)</small></label><input class="campo" type="password" id="setPassword" autocomplete="new-password"></div>
+    </div>
+
+    <div class="azioni" style="justify-content:space-between;margin-top:24px">
+      <button class="btn btn-rosso" id="btnEsci">ESCI DALLO SCHERMO INTERO</button>
+      <button class="btn btn-giallo" id="btnSalvaImp">SALVA E TORNA ALLA TV</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const fmt = s => { s = Math.max(0, Math.floor(s || 0)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+
+  /* ================= Impostazioni ================= */
+  const DEFAULT = { password: "azione2026", titolo: "TV AC", canale: "CH 03", adatta: "contain", crt: "off", volume: 100, attivo: null };
+  const ls = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  };
+  let cfg = Object.assign({}, DEFAULT, ls.get("tv_cfg", {}));
+  const salvaCfg = () => ls.set("tv_cfg", cfg);
+  const video = $("video");
+
+  function applicaCfg() {
+    $("txtTitolo").textContent = cfg.titolo;
+    $("txtCanale").textContent = cfg.canale;
+    document.title = cfg.titolo;
+    video.classList.toggle("riempi", cfg.adatta === "cover");
+    document.body.classList.remove("crt-off", "crt-leggero");
+    if (cfg.crt === "off") document.body.classList.add("crt-off");
+    if (cfg.crt === "leggero") document.body.classList.add("crt-leggero");
+    video.volume = cfg.volume / 100;
+  }
+
+  function toast(msg, ms = 3000) {
+    const t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), ms);
+  }
+
+  // barre colorate e orologio
+  ["#c0c0c0","#c0c000","#00c0c0","#00c000","#c000c0","#c00000","#0000c0"].forEach(c => { const i = document.createElement("i"); i.style.background = c; $("barre").appendChild(i); });
+  const orologio = () => { const d = new Date(); $("txtOra").textContent = String(d.getHours()).padStart(2,"0") + ":" + String(d.getMinutes()).padStart(2,"0"); };
+  orologio(); setInterval(orologio, 10000);
+
+  /* ================= Archivio video (IndexedDB) ================= */
+  const DB = {
+    db: null,
+    apri() {
+      return new Promise((ok, ko) => {
+        if (this.db) return ok(this.db);
+        const r = indexedDB.open("tv_ac", 1);
+        r.onupgradeneeded = () => r.result.createObjectStore("video", { keyPath: "id" });
+        r.onsuccess = () => { this.db = r.result; ok(this.db); };
+        r.onerror = () => ko(r.error);
+      });
+    },
+    async tx(mode, fn) {
+      const db = await this.apri();
+      return new Promise((ok, ko) => {
+        const t = db.transaction("video", mode); const s = t.objectStore("video");
+        const req = fn(s);
+        t.oncomplete = () => ok(req && req.result); t.onerror = () => ko(t.error); t.onabort = () => ko(t.error);
+      });
+    },
+    tutti() { return this.tx("readonly", s => s.getAll()); },
+    get(id) { return this.tx("readonly", s => s.get(id)); },
+    put(b) { return this.tx("readwrite", s => s.put(b)); },
+    del(id) { return this.tx("readwrite", s => s.delete(id)); }
+  };
+  // chiede al browser di non cancellare i video salvati
+  try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
+
+  /* ================= Player ================= */
+  video.loop = true;   // al termine riparte da capo
+  let urlCorrente = null, corrente = null;
+
+  async function caricaAttivo() {
+    video.pause();
+    if (urlCorrente) { URL.revokeObjectURL(urlCorrente); urlCorrente = null; }
+    corrente = cfg.attivo ? await DB.get(cfg.attivo).catch(() => null) : null;
+    if (!corrente) {
+      const lista = await DB.tutti().catch(() => []);
+      if (lista.length) { corrente = lista[0]; cfg.attivo = corrente.id; salvaCfg(); }
+    }
+    if (corrente) {
+      urlCorrente = URL.createObjectURL(corrente.blob);
+      video.src = urlCorrente; video.load();
+      $("txtVideo").textContent = corrente.nome.toUpperCase();
+      $("txtPremi").innerHTML = "PREMI <b>▶ PLAY</b>";
+    } else {
+      video.removeAttribute("src"); video.load();
+      $("txtVideo").textContent = "NESSUN VIDEO";
+      $("txtPremi").textContent = "CHIAMA L'ANIMATORE";
+    }
+    $("btnPlay").disabled = $("btnInizio").disabled = !corrente;
+    aggiornaUi(); aggiornaTempo();
+  }
+
+  const NSEG = 30;
+  for (let i = 0; i < NSEG; i++) $("segmenti").appendChild(document.createElement("i"));
+  const segmenti = [...$("segmenti").children];
+  function aggiornaTempo() {
+    const tot = isFinite(video.duration) ? video.duration : 0;
+    $("tempoOra").textContent = fmt(video.currentTime);
+    $("tempoTot").textContent = fmt(tot);
+    const pieni = tot ? Math.round(video.currentTime / tot * NSEG) : 0;
+    segmenti.forEach((s, i) => s.classList.toggle("pieno", i < pieni));
+  }
+
+  let osdTimer = null;
+  function osd(testo, svanisci = true) {
+    const o = $("osdStato"); o.textContent = testo; o.classList.remove("svanisci");
+    clearTimeout(osdTimer);
+    if (svanisci) osdTimer = setTimeout(() => o.classList.add("svanisci"), 2500);
+  }
+
+  function allInizio() { return video.currentTime < 0.3; }
+  function aggiornaUi() {
+    const suona = !video.paused;
+    $("icoPlay").innerHTML = suona ? '<rect x="5" y="4" width="5" height="16"/><rect x="14" y="4" width="5" height="16"/>' : '<path d="M7 4v16l13-8z"/>';
+    $("lblPlay").textContent = suona ? "PAUSA" : "PLAY";
+    // schermata blu quando il video è fermo all'inizio (o manca)
+    const attesa = !corrente || (!suona && allInizio());
+    $("schermataBlu").classList.toggle("nascosta", !attesa);
+    document.body.classList.toggle("in-attesa", attesa);
+    mostraComandi();
+  }
+
+  /* Dopo 10 secondi di pausa il video torna all'inizio */
+  const SECONDI_PAUSA = 10;
+  let timerPausa = null;
+  function annullaTimerPausa() { clearInterval(timerPausa); timerPausa = null; $("osdAvviso").innerHTML = ""; }
+  function avviaTimerPausa() {
+    annullaTimerPausa();
+    if (!corrente || allInizio()) return;
+    let resta = SECONDI_PAUSA;
+    const scrivi = () => $("osdAvviso").innerHTML = "<span>SI TORNA ALL'INIZIO TRA " + resta + " S</span>";
+    scrivi();
+    timerPausa = setInterval(() => {
+      resta--;
+      if (resta <= 0) { annullaTimerPausa(); if (video.paused) tornaInizio(); }
+      else scrivi();
+    }, 1000);
+  }
+  function tornaInizio() {
+    if (!corrente) return;
+    const suonava = !video.paused;
+    annullaTimerPausa();
+    neve(350);
+    video.currentTime = 0; aggiornaTempo();
+    if (suonava) osd("⏮ INIZIO"); else { $("osdStato").textContent = ""; }
+    aggiornaUi();
+  }
+  async function playPausa() {
+    if (!corrente) { toast("NESSUN VIDEO: CHIAMA L'ANIMATORE"); return; }
+    if (video.paused) {
+      if (allInizio()) neve(400);
+      try { await video.play(); } catch { toast("PREMI DI NUOVO PLAY"); }
+    } else video.pause();
+  }
+
+  video.addEventListener("play", () => { annullaTimerPausa(); osd("▶ PLAY"); aggiornaUi(); });
+  video.addEventListener("pause", () => { osd("❚❚ PAUSA", false); avviaTimerPausa(); aggiornaUi(); });
+  video.addEventListener("timeupdate", aggiornaTempo);
+  video.addEventListener("loadedmetadata", aggiornaTempo);
+  video.addEventListener("ended", () => { video.currentTime = 0; video.play().catch(() => {}); });
+  video.addEventListener("error", () => { if (video.getAttribute("src")) toast("⚠ QUESTO VIDEO NON SI RIESCE A RIPRODURRE. USA UN FILE MP4.", 6000); });
+
+  $("btnPlay").onclick = e => { e.stopPropagation(); playPausa(); };
+  $("btnInizio").onclick = e => { e.stopPropagation(); tornaInizio(); };
+  // clic in un punto qualsiasi dello schermo = play/pausa
+  $("schermo").addEventListener("click", e => {
+    if (e.target.closest(".comandi, .lucchetto")) return;
+    playPausa();
+  });
+
+  /* comandi che si nascondono mentre il video va */
+  let nascondiTimer = null;
+  function mostraComandi() {
+    $("comandi").classList.remove("nascosti"); $("btnLucchetto").classList.remove("nascosto");
+    document.body.classList.remove("cursore-nascosto");
+    clearTimeout(nascondiTimer);
+    if (!video.paused) nascondiTimer = setTimeout(() => {
+      if (video.paused) return;
+      $("comandi").classList.add("nascosti"); $("btnLucchetto").classList.add("nascosto");
+      document.body.classList.add("cursore-nascosto");
+    }, 3500);
+  }
+  ["mousemove", "touchstart", "mousedown"].forEach(ev => document.addEventListener(ev, mostraComandi, { passive: true }));
+
+  /* neve (rumore televisivo) */
+  const cv = $("neve"), cx = cv.getContext("2d"), img = cx.createImageData(cv.width, cv.height);
+  let neveFino = 0;
+  function neve(ms) { neveFino = performance.now() + ms; cv.classList.add("attiva"); requestAnimationFrame(disegnaNeve); }
+  function disegnaNeve(t) {
+    if (t > neveFino) { cv.classList.remove("attiva"); return; }
+    const d = img.data;
+    for (let i = 0; i < d.length; i += 4) { const v = Math.random() * 255 | 0; d[i] = d[i+1] = d[i+2] = v; d[i+3] = 255; }
+    cx.putImageData(img, 0, 0);
+    requestAnimationFrame(disegnaNeve);
+  }
+
+  /* ================= Tastiera / telecomando ================= */
+  document.addEventListener("keydown", e => {
+    if (e.key === "F5" || e.key === "F11" || (e.ctrlKey && /^[rpsu]$/i.test(e.key))) e.preventDefault();
+    if ($("ovPassword").classList.contains("show")) { if (e.key === "Enter") { e.preventDefault(); $("btnPwdOk").click(); } return; }
+    if (document.querySelector(".overlay.show")) return;
+    if (!$("avvio").classList.contains("nascosto")) { e.preventDefault(); avvia(); return; }
+    mostraComandi();
+    // barra spaziatrice, invio, tasti multimediali e telecomandi da presentazione
+    if ([" ", "Enter", "MediaPlayPause", "k", "K", "PageDown", "ArrowRight"].includes(e.key)) { e.preventDefault(); playPausa(); }
+    else if (["Home", "Backspace", "r", "R", "PageUp", "ArrowLeft", "MediaTrackPrevious"].includes(e.key)) { e.preventDefault(); tornaInizio(); }
+  });
+
+  /* ================= Fullscreen + blocco ================= */
+  let sbloccato = false, avviato = false;
+  const inFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  async function entraFs() {
+    const el = document.documentElement;
+    try {
+      if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: "hide" });
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    } catch {}
+    try { if (navigator.keyboard && navigator.keyboard.lock) await navigator.keyboard.lock(["Escape"]); } catch {}
+    wake();
+  }
+  function esciFs() {
+    try { navigator.keyboard && navigator.keyboard.unlock && navigator.keyboard.unlock(); } catch {}
+    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }
+  function onFs() { $("ovFullscreen").classList.toggle("show", avviato && !inFs() && !sbloccato); }
+  document.addEventListener("fullscreenchange", onFs);
+  document.addEventListener("webkitfullscreenchange", onFs);
+  $("btnTornaFs").onclick = async () => { await entraFs(); onFs(); };
+  $("btnFsAdmin").onclick = () => chiediPassword(apriAdmin);
+
+  let wl = null;
+  async function wake() { try { if ("wakeLock" in navigator && !wl) { wl = await navigator.wakeLock.request("screen"); wl.addEventListener("release", () => wl = null); } } catch {} }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") wake(); });
+  document.addEventListener("contextmenu", e => e.preventDefault());
+  window.addEventListener("beforeunload", e => { if (avviato && !sbloccato) { e.preventDefault(); e.returnValue = ""; } });
+
+  /* ================= Password ================= */
+  let pwdCb = null;
+  function chiediPassword(cb) {
+    pwdCb = cb; $("inPassword").value = ""; $("errPassword").textContent = "";
+    $("ovPassword").classList.add("show");
+    setTimeout(() => $("inPassword").focus(), 60);
+  }
+  $("btnPwdAnnulla").onclick = () => { $("ovPassword").classList.remove("show"); pwdCb = null; };
+  $("btnPwdOk").onclick = () => {
+    if ($("inPassword").value === cfg.password) {
+      $("ovPassword").classList.remove("show"); const cb = pwdCb; pwdCb = null; cb && cb();
+    } else {
+      $("errPassword").textContent = "PASSWORD ERRATA";
+      const m = $("modalPassword"); m.classList.remove("shake"); void m.offsetWidth; m.classList.add("shake");
+    }
+  };
+  $("btnLucchetto").onclick = e => { e.stopPropagation(); chiediPassword(apriAdmin); };
+
+  /* ================= Pannello animatore ================= */
+  let selezione = null;
+  async function apriAdmin() {
+    sbloccato = true; $("ovFullscreen").classList.remove("show");
+    video.pause();
+    selezione = cfg.attivo;
+    $("setTitolo").value = cfg.titolo; $("setCanale").value = cfg.canale;
+    $("setAdatta").value = cfg.adatta; $("setCrt").value = cfg.crt;
+    $("setVolume").value = cfg.volume; $("lblVolume").textContent = cfg.volume;
+    $("setPassword").value = "";
+    await disegnaLibreria();
+    $("ovAdmin").classList.add("show");
+  }
+  async function disegnaLibreria() {
+    const box = $("libreria"); box.innerHTML = "";
+    const lista = (await DB.tutti().catch(() => [])).sort((a, b) => b.data - a.data);
+    if (!lista.length) { box.innerHTML = '<div class="vuota">Nessun video caricato. Premi il pulsante qui sotto per sceglierne uno.</div>'; return; }
+    if (!lista.some(b => b.id === selezione)) selezione = lista[0].id;
+    lista.forEach(b => {
+      const r = document.createElement("div"); r.className = "elemento" + (b.id === selezione ? " attivo" : "");
+      r.innerHTML = '<span class="sel"></span><div class="info"><b></b><small></small></div><button class="del" aria-label="Elimina">✕</button>';
+      r.querySelector("b").textContent = b.nome;
+      r.querySelector("small").textContent = (b.durata ? fmt(b.durata) + " · " : "") + (b.blob.size / 1048576).toFixed(0) + " MB";
+      r.onclick = () => { selezione = b.id; disegnaLibreria(); };
+      r.querySelector(".del").onclick = async e => {
+        e.stopPropagation();
+        if (!confirm("Eliminare \"" + b.nome + "\"?")) return;
+        await DB.del(b.id);
+        if (selezione === b.id) selezione = null;
+        disegnaLibreria();
+      };
+      box.appendChild(r);
+    });
+  }
+  function durataDi(blob) {
+    return new Promise(ok => {
+      const v = document.createElement("video"); const u = URL.createObjectURL(blob);
+      const fine = d => { ok(d); URL.revokeObjectURL(u); };
+      v.preload = "metadata"; v.src = u;
+      v.onloadedmetadata = () => fine(isFinite(v.duration) ? v.duration : 0);
+      v.onerror = () => fine(0);
+      setTimeout(() => fine(0), 8000);
+    });
+  }
+  $("inFile").onchange = async e => {
+    const files = [...e.target.files]; e.target.value = "";
+    const pr = $("progresso"); pr.classList.add("show");
+    let ok = 0;
+    for (let i = 0; i < files.length; i++) {
+      const f = files[i];
+      pr.firstElementChild.style.width = (i / files.length * 100) + "%";
+      const id = Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+      const nome = f.name.replace(/\.[^.]+$/, "").replace(/[_]+/g, " ");
+      try {
+        const durata = await durataDi(f);
+        await DB.put({ id, nome, blob: f, durata, data: Date.now() });
+        selezione = id; ok++;
+      } catch { toast("⚠ SPAZIO INSUFFICIENTE PER \"" + nome.toUpperCase() + "\"", 6000); }
+    }
+    pr.firstElementChild.style.width = "100%";
+    setTimeout(() => pr.classList.remove("show"), 600);
+    if (ok) toast(ok === 1 ? "✔ VIDEO CARICATO" : "✔ " + ok + " VIDEO CARICATI");
+    disegnaLibreria();
+  };
+  $("setVolume").oninput = e => { $("lblVolume").textContent = e.target.value; video.volume = e.target.value / 100; };
+  $("setCrt").onchange = e => { cfg.crt = e.target.value; applicaCfg(); };
+  $("setAdatta").onchange = e => { cfg.adatta = e.target.value; applicaCfg(); };
+
+  $("btnSalvaImp").onclick = async () => {
+    cfg.titolo = $("setTitolo").value.trim() || DEFAULT.titolo;
+    cfg.canale = $("setCanale").value.trim();
+    cfg.volume = parseInt($("setVolume").value, 10);
+    if (isNaN(cfg.volume)) cfg.volume = 100;
+    if ($("setPassword").value) { cfg.password = $("setPassword").value; toast("🔑 PASSWORD AGGIORNATA"); }
+    const cambiato = selezione !== cfg.attivo || !corrente;
+    cfg.attivo = selezione;
+    salvaCfg(); applicaCfg();
+    $("ovAdmin").classList.remove("show");
+    if (cambiato) { await caricaAttivo(); neve(500); }
+    sbloccato = false;
+    await entraFs(); onFs();
+  };
+  $("btnEsci").onclick = () => {
+    $("ovAdmin").classList.remove("show");
+    sbloccato = true; video.pause(); esciFs();
+    toast("SCHERMO INTERO DISATTIVATO: ORA PUOI CHIUDERE LA PAGINA", 5000);
+  };
+
+  /* ================= Avvio ================= */
+  async function avvia() {
+    if (avviato) return;
+    avviato = true;
+    $("avvio").classList.add("nascosto");
+    const acc = $("accensione"); acc.classList.add("vai");
+    setTimeout(() => acc.classList.remove("vai"), 1300);
+    await entraFs();
+    onFs();
+    if (!corrente) toast("NESSUN VIDEO: APRI IL LUCCHETTO PER SCEGLIERNE UNO", 5000);
+  }
+  $("avvio").onclick = avvia;
+
+  applicaCfg();
+  caricaAttivo();
+})();
+</script>
+</body>
+</html>
