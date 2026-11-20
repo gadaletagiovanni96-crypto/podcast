@@ -134,7 +134,7 @@ Serve un piccolo programma "ponte" che resta acceso sul PC (non va installato ni
 1. Tieni tutti i file nella **stessa cartella** (`tv.html`, `telecomando.html`, `server.ps1`, `avvia-telecomando-windows.bat`).
 2. Doppio clic su **`avvia-telecomando-windows.bat`** → rispondi **Sì** alla richiesta di Windows (serve per aprire la porta alla rete Wi-Fi). Se compare l'avviso di Windows SmartScreen: *Ulteriori informazioni → Esegui comunque*.
 3. Si apre una finestra nera con due indirizzi e **la TV si apre da sola nel browser** (`http://localhost:8080/tv.html`). **Non chiudere la finestra nera.**
-4. Sul telefono apri l'indirizzo verde scritto nella finestra, tipo `http://192.168.1.23:8080/telecomando.html`. Puoi aggiungerlo alla schermata Home.
+4. Sul telefono apri l'indirizzo verde scritto nella finestra, tipo `http://192.168.1.23:8080/telecomando.html`, e tocca **"Accendi il telecomando"**: va a schermo intero (su Android). Su iPhone, per averlo a tutto schermo, aggiungilo alla schermata Home (Condividi → Aggiungi alla schermata Home) e aprilo da lì.
 
 ## Mac
 Doppio clic su **`avvia-telecomando-mac.command`** (la prima volta: tasto destro → Apri). In alternativa, dal Terminale: `python3 server.py`.

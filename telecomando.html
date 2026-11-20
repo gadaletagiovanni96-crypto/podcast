@@ -78,6 +78,17 @@
   .avviso { display: none; text-align: center; font-size: .9rem; color: #ffd6a0; line-height: 1.4; }
   .avviso.show { display: block; }
 
+  .avvio {
+    position: fixed; inset: 0; z-index: 50; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+    background: radial-gradient(circle at 30% 0%, rgba(30,99,214,0.6), transparent 55%), linear-gradient(170deg, #0b3d91, #061a3a 70%);
+    background-color: var(--blu-notte); text-align: center; padding: 24px; cursor: pointer;
+  }
+  .avvio.nascosto { display: none; }
+  .avvio .icona { width: 110px; height: 110px; border-radius: 30px; background: var(--giallo); display: grid; place-items: center; box-shadow: 0 16px 40px rgba(255,199,44,0.4); }
+  .avvio .icona svg { width: 60px; height: 60px; }
+  .avvio h1 { font-size: 1.8rem; }
+  .avvio p { color: rgba(255,255,255,0.75); }
+  .avvio .vai { margin-top: 8px; border: none; border-radius: 18px; padding: 16px 30px; font-size: 1.1rem; font-weight: 800; background: var(--giallo); color: var(--blu-notte); box-shadow: 0 10px 26px rgba(255,199,44,0.35); }
   @media (max-height: 640px) {
     .telecomando { gap: 14px; padding: 18px 20px 24px; }
     .tasto-play { width: 136px; height: 136px; } .tasto-play svg { width: 48px; height: 48px; }
@@ -86,6 +97,12 @@
 </style>
 </head>
 <body>
+  <div class="avvio" id="avvio">
+    <div class="icona"><svg viewBox="0 0 24 24" fill="#061a3a"><rect x="7" y="2" width="10" height="20" rx="3"/><circle cx="12" cy="8" r="2.4" fill="#ffc72c"/><rect x="9.5" y="13" width="5" height="1.6" rx=".8" fill="#ffc72c"/><rect x="9.5" y="16" width="5" height="1.6" rx=".8" fill="#ffc72c"/></svg></div>
+    <h1>Telecomando TV</h1>
+    <p>Tocca per iniziare</p>
+    <button class="vai">Accendi il telecomando ▶</button>
+  </div>
   <div class="telecomando">
     <div class="testa">
       <span class="led" id="led"></span>
@@ -175,6 +192,19 @@
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") { wake(); aggiornaStato(); } });
   document.addEventListener("pointerdown", wake, { once: true });
   document.addEventListener("contextmenu", e => e.preventDefault());
+
+  // Schermo intero: al primo tocco, e di nuovo al tocco successivo se si esce
+  const inFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  function entraFs() {
+    const el = document.documentElement;
+    try {
+      const p = el.requestFullscreen ? el.requestFullscreen({ navigationUI: "hide" }) : (el.webkitRequestFullscreen && el.webkitRequestFullscreen());
+      if (p && p.then) p.then(() => { try { screen.orientation.lock("portrait").catch(() => {}); } catch {} }).catch(() => {});
+    } catch {}
+    wake();
+  }
+  $("avvio").addEventListener("click", () => { entraFs(); $("avvio").classList.add("nascosto"); });
+  document.addEventListener("pointerdown", e => { if (!inFs() && !e.target.closest("#avvio")) entraFs(); });
 })();
 </script>
 </body>
