@@ -133,7 +133,7 @@ Tutto funziona sulla **rete Wi-Fi locale della mostra, senza Internet**. Visitat
 Il programma ponte (`server.py`) va avviato sui PC della mostra e fa tre cose:
 1. **Telecomando della TV** dal telefono dell'animatore.
 2. **Radio dal telefono**: i visitatori inquadrano un QR stampato e ascoltano gli audio nelle proprie cuffie (ognuno per conto suo, con Play/Pausa, Inizio, +10 s e barra di scorrimento). Non serve nessun tablet o PC per la radio.
-3. **Audio in diretta di TV e desktop** nelle cuffie dei visitatori (ritardo di circa 0,1–0,3 secondi).
+3. **Audio in diretta di TV e desktop** nelle cuffie dei visitatori (ritardo di circa 0,2–0,3 secondi; l'audio passa dalla stessa connessione delle pagine web, quindi non servono altre porte o regole del firewall).
 
 Nessun QR compare sugli schermi: i QR si **stampano** (PNG).
 

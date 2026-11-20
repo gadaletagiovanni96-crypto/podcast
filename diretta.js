@@ -1,4 +1,4 @@
-/* Mostra AC – QR code e audio in diretta sulla rete locale (WebRTC).
+/* Mostra AC – QR code e audio in diretta sulla rete locale.
    Usato da tv.html, desktop.html, ascolta.html, radio-ascolto.html e qr.html.
    Richiede qrcode.js (Kazuhiko Arase, licenza MIT). */
 (function (w) {
@@ -31,150 +31,131 @@
     if (!r.ok) throw new Error("server");
     return r.json();
   }
-  async function invia(msg) {
-    await fetch("/api/rtc/invia", { method: "POST", body: JSON.stringify(msg), headers: { "Content-Type": "application/json" } });
-  }
-  function attendiIce(pc, ms) {
-    if (pc.iceGatheringState === "complete") return Promise.resolve();
-    return new Promise(ok => {
-      const fine = () => { pc.removeEventListener("icegatheringstatechange", contr); ok(); };
-      const contr = () => { if (pc.iceGatheringState === "complete") fine(); };
-      pc.addEventListener("icegatheringstatechange", contr);
-      setTimeout(fine, ms);
-    });
-  }
-  // Opus stereo e di buona qualità
-  function opusStereo(sdp) {
-    const m = sdp.match(/a=rtpmap:(\d+) opus\/48000/i);
-    if (!m) return sdp;
-    const pt = m[1], extra = "stereo=1;sprop-stereo=1;maxaveragebitrate=128000";
-    const re = new RegExp(`a=fmtp:${pt} ([^\\r\\n]*)`);
-    if (re.test(sdp)) return sdp.replace(re, (x, p) => `a=fmtp:${pt} ${p.replace(/;?(stereo|sprop-stereo|maxaveragebitrate)=\d+/g, "")};${extra}`);
-    return sdp.replace(m[0], `${m[0]}\r\na=fmtp:${pt} ${extra}`);
-  }
+
+  /* L'audio in diretta passa dalla stessa connessione delle pagine web (porta 8080):
+     il PC manda al programma ponte piccoli pezzi di audio (PCM 16 bit mono, 24 kHz)
+     e il programma li gira ai telefoni collegati. Niente firewall da aprire, niente UDP. */
+  const FREQ = 24000;
 
   /* ---------------- trasmettitore (PC) ---------------- */
   class Trasmettitore {
     constructor(canale) {
-      this.canale = canale; this.peers = new Map(); this.stream = null;
-      this.attivo = false; this.ips = []; this.onCambio = null;
+      this.canale = canale; this.attivo = false; this.ascoltatori = 0;
+      this.ctx = null; this.proc = null; this.pos = 0; this.coda = []; this.inCorso = false; this.ultimo = 0;
     }
-    get ascoltatori() { let n = 0; this.peers.forEach(p => { if (p.connectionState === "connected") n++; }); return n; }
-    async avvia(stream) {
-      this.stream = stream;
+    avvia(ctx, nodo) {
       if (this.attivo) return;
-      this.attivo = true;
-      try { const j = await info(); this.ips = j.tutti || [j.ip]; } catch { this.ips = []; }
-      this._ciclo();
+      this.attivo = true; this.ctx = ctx;
+      const proc = ctx.createScriptProcessor(2048, 2, 1);
+      const muto = ctx.createGain(); muto.gain.value = 0;
+      nodo.connect(proc); proc.connect(muto); muto.connect(ctx.destination);
+      this.proc = proc; this.nodo = nodo; this.muto = muto;
+      const passo = ctx.sampleRate / FREQ;
+      proc.onaudioprocess = e => {
+        const ib = e.inputBuffer, l = ib.getChannelData(0), r = ib.numberOfChannels > 1 ? ib.getChannelData(1) : l;
+        // ricampionamento lineare a 24 kHz, in mono
+        const out = [];
+        let p = this.pos;
+        while (p < l.length - 1) {
+          const i = Math.floor(p), f = p - i;
+          const a = (l[i] + r[i]) / 2, b = (l[i + 1] + r[i + 1]) / 2;
+          const v = Math.max(-1, Math.min(1, a + (b - a) * f));
+          out.push(v < 0 ? v * 0x8000 : v * 0x7fff);
+          p += passo;
+        }
+        this.pos = p - l.length;
+        this.coda.push(Int16Array.from(out));
+        this._invia();
+      };
+      // se nessuno ascolta per un po' comunque teniamo vivo il segnale "attivo"
+      this._timer = setInterval(() => this._invia(true), 1000);
     }
     ferma() {
-      this.attivo = false;
-      [...this.peers.keys()].forEach(id => this._chiudi(id));
+      this.attivo = false; this.coda = [];
+      clearInterval(this._timer);
+      try { this.nodo.disconnect(this.proc); } catch {}
+      try { this.proc.disconnect(); this.muto.disconnect(); } catch {}
+      this.proc = null;
     }
-    async _ciclo() {
-      while (this.attivo) {
-        try {
-          const r = await fetch(`/api/rtc/ricevi?canale=${this.canale}&per=pc&n=${this.ascoltatori}`, { cache: "no-store" });
-          const j = await r.json();
-          for (const m of j.messaggi || []) await this._gestisci(m).catch(() => {});
-        } catch {}
-        await attendi(400);
-      }
-    }
-    async _gestisci(m) {
-      if (m.tipo === "ciao") return this._nuovo(String(m.da));
-      const pc = this.peers.get(String(m.da));
-      if (!pc) return;
-      if (m.tipo === "risposta") await pc.setRemoteDescription({ type: "answer", sdp: m.sdp });
-      else if (m.tipo === "arrivederci") this._chiudi(String(m.da));
-    }
-    _chiudi(id) {
-      const pc = this.peers.get(id);
-      if (pc) { try { pc.close(); } catch {} this.peers.delete(id); this.onCambio && this.onCambio(); }
-    }
-    // Chrome nasconde l'indirizzo del PC dietro un nome ".local": lo sostituiamo con l'indirizzo vero
-    _indirizziVeri(sdp) {
-      if (!this.ips.length) return sdp;
-      return sdp.split("\r\n").flatMap(riga => {
-        const m = riga.match(/^(a=candidate:\S+ \d+ \S+ \d+ )(\S+\.local)( \d+ typ host.*)$/i);
-        return m ? this.ips.map(ip => m[1] + ip + m[3]) : [riga];
-      }).join("\r\n");
-    }
-    async _nuovo(id) {
-      if (!this.stream) return;
-      this._chiudi(id);
-      const pc = new RTCPeerConnection({ iceServers: [] });
-      this.peers.set(id, pc);
-      this.stream.getAudioTracks().forEach(t => pc.addTrack(t, this.stream));
-      pc.onconnectionstatechange = () => {
-        const s = pc.connectionState;
-        if (s === "failed" || s === "closed") this._chiudi(id);
-        if (s === "disconnected") setTimeout(() => { if (pc.connectionState === "disconnected") this._chiudi(id); }, 8000);
-        this.onCambio && this.onCambio();
-      };
-      await pc.setLocalDescription(await pc.createOffer());
-      await attendiIce(pc, 2000);
-      await invia({ canale: this.canale, a: id, da: "pc", tipo: "offerta", sdp: this._indirizziVeri(pc.localDescription.sdp) });
-      setTimeout(() => { if (pc.connectionState === "new") this._chiudi(id); }, 20000);
+    async _invia(forza) {
+      if (this.inCorso || !this.attivo) return;
+      const tot = this.coda.reduce((n, a) => n + a.length, 0);
+      if (tot < FREQ * 0.06 && !(forza && Date.now() - this.ultimo > 900)) return;   // pezzi da ~60 ms
+      const buf = new Int16Array(tot); let o = 0;
+      this.coda.forEach(a => { buf.set(a, o); o += a.length; }); this.coda = [];
+      this.inCorso = true; this.ultimo = Date.now();
+      try {
+        const r = await fetch(`/api/flusso/invia?canale=${this.canale}`, { method: "POST", body: buf.buffer, headers: { "Content-Type": "application/octet-stream" } });
+        const j = await r.json(); this.ascoltatori = j.ascoltatori || 0;
+      } catch {}
+      this.inCorso = false;
+      if (this.coda.length > 20) this.coda = this.coda.slice(-4);   // rete lenta: non accumulare ritardo
     }
   }
 
   /* ---------------- ricevitore (telefono) ---------------- */
+  function wavMuto() {
+    // mezzo secondo di silenzio: suonato in loop sblocca l'audio su iPhone anche col tasto silenzioso
+    const n = 4000, b = new ArrayBuffer(44 + n * 2), d = new DataView(b);
+    const s = (o, t) => { for (let i = 0; i < t.length; i++) d.setUint8(o + i, t.charCodeAt(i)); };
+    s(0, "RIFF"); d.setUint32(4, 36 + n * 2, true); s(8, "WAVE"); s(12, "fmt "); d.setUint32(16, 16, true); d.setUint16(20, 1, true);
+    d.setUint16(22, 1, true); d.setUint32(24, 8000, true); d.setUint32(28, 16000, true); d.setUint16(32, 2, true); d.setUint16(34, 16, true);
+    s(36, "data"); d.setUint32(40, n * 2, true);
+    return URL.createObjectURL(new Blob([b], { type: "audio/wav" }));
+  }
   class Ricevitore {
     constructor(canale, audio) {
-      this.canale = canale; this.audio = audio; this.pc = null; this.id = null;
-      this.stato = "spento"; this.onStato = null; this._gen = 0;
+      this.canale = canale; this.audio = audio; this.ctx = null; this.stato = "spento"; this.onStato = null;
+      this._gen = 0; this.ctrl = null; this.testa = 0; this.ultimoDato = 0;
     }
-    _imposta(s) { this.stato = s; this.onStato && this.onStato(s); }
+    _imposta(s) { if (this.stato !== s) { this.stato = s; this.onStato && this.onStato(s); } }
+    // va chiamato dentro il tocco dell'utente
+    sblocca() {
+      try { if (navigator.audioSession) navigator.audioSession.type = "playback"; } catch {}
+      if (!this.ctx) this.ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
+      this.ctx.resume().catch(() => {});
+      try { this.guadagno || (this.guadagno = this.ctx.createGain(), this.guadagno.connect(this.ctx.destination)); } catch {}
+      if (this.audio && !this.audio.src) { this.audio.src = wavMuto(); this.audio.loop = true; this.audio.volume = 0.01; }
+      if (this.audio) this.audio.play().catch(() => {});
+    }
     async connetti() {
       const gen = ++this._gen;
-      this.chiudi(false);
-      this.id = Math.random().toString(36).slice(2, 12);
+      this.chiudi();
       this._imposta("connessione");
-      const pc = new RTCPeerConnection({ iceServers: [] });
-      this.pc = pc;
-      pc.ontrack = e => {
-        try { e.receiver.playoutDelayHint = 0; } catch {}
-        try { e.receiver.jitterBufferTarget = 0; } catch {}
-        this.audio.srcObject = e.streams[0] || new MediaStream([e.track]);
-        this.audio.play().catch(() => this._imposta("tocca"));
-      };
-      pc.onconnectionstatechange = () => {
-        if (gen !== this._gen) return;
-        const s = pc.connectionState;
-        if (s === "connected") this._imposta("diretta");
-        else if (s === "failed" || s === "closed") this._imposta("persa");
-        else if (s === "disconnected") setTimeout(() => { if (gen === this._gen && pc.connectionState === "disconnected") this._imposta("persa"); }, 4000);
-      };
-      await invia({ canale: this.canale, a: "pc", da: this.id, tipo: "ciao" });
-      const limite = Date.now() + 10000;
-      while (Date.now() < limite && gen === this._gen) {
-        const r = await fetch(`/api/rtc/ricevi?canale=${this.canale}&per=${this.id}`, { cache: "no-store" });
-        const j = await r.json();
-        const off = (j.messaggi || []).find(m => m.tipo === "offerta");
-        if (off) {
-          await pc.setRemoteDescription({ type: "offer", sdp: off.sdp });
-          const ans = await pc.createAnswer();
-          await pc.setLocalDescription(ans);
-          await attendiIce(pc, 1500);
-          await invia({ canale: this.canale, a: "pc", da: this.id, tipo: "risposta", sdp: opusStereo(pc.localDescription.sdp) });
-          // se dopo 10 secondi l'audio non è arrivato, si riprova
-          setTimeout(() => { if (gen === this._gen && pc.connectionState !== "connected") this._imposta("persa"); }, 10000);
-          return;
+      const ctrl = new AbortController(); this.ctrl = ctrl;
+      let r;
+      try { r = await fetch(`/api/flusso/ricevi?canale=${this.canale}&_=${Date.now()}`, { cache: "no-store", signal: ctrl.signal }); }
+      catch { if (gen === this._gen) this._imposta("persa"); return; }
+      if (!r.ok || !r.body) { if (gen === this._gen) this._imposta("persa"); return; }
+      const lettore = r.body.getReader();
+      let avanzo = null;
+      this.testa = 0;
+      try {
+        while (gen === this._gen) {
+          const { value, done } = await lettore.read();
+          if (done) break;
+          let dati = value;
+          if (avanzo) { const t = new Uint8Array(avanzo.length + dati.length); t.set(avanzo); t.set(dati, avanzo.length); dati = t; avanzo = null; }
+          if (dati.length % 2) { avanzo = dati.slice(dati.length - 1); dati = dati.slice(0, dati.length - 1); }
+          if (dati.length) this._suona(dati);
         }
-        await attendi(300);
-      }
+      } catch {}
       if (gen === this._gen) this._imposta("persa");
     }
-    chiudi(avvisa = true) {
-      if (this.pc) {
-        if (avvisa && this.id) {
-          try { navigator.sendBeacon("/api/rtc/invia", JSON.stringify({ canale: this.canale, a: "pc", da: this.id, tipo: "arrivederci" })); } catch {}
-        }
-        try { this.pc.close(); } catch {}
-        this.pc = null;
-      }
+    _suona(byte) {
+      const ctx = this.ctx; if (!ctx) return;
+      const pcm = new Int16Array(byte.buffer, byte.byteOffset, byte.length / 2);
+      const buf = ctx.createBuffer(1, pcm.length, FREQ), ch = buf.getChannelData(0);
+      for (let i = 0; i < pcm.length; i++) ch[i] = pcm[i] / 32768;
+      const ora = ctx.currentTime;
+      if (this.testa < ora + 0.03) this.testa = ora + 0.12;          // partenza o buco: piccolo margine
+      if (this.testa > ora + 0.6) return;                             // troppo ritardo accumulato: salto un pezzo
+      const src = ctx.createBufferSource(); src.buffer = buf; src.connect(this.guadagno || ctx.destination);
+      src.start(this.testa); this.testa += buf.duration;
+      this.ultimoDato = Date.now();
+      this._imposta("diretta");
     }
+    chiudi() { if (this.ctrl) { try { this.ctrl.abort(); } catch {} this.ctrl = null; } }
   }
 
   w.MostraAC = { qrSvg, testoWifi, conServer, info, Trasmettitore, Ricevitore };

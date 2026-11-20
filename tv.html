@@ -758,7 +758,7 @@
     ["play", "pause", "seeked", "loadedmetadata"].forEach(ev => video.addEventListener(ev, () => setTimeout(inviaStato, 50)));
   }
 
-  /* ================= Audio in cuffia (QR code + diretta WebRTC) ================= */
+  /* ================= Audio in cuffia dal telefono (diretta sulla rete locale) ================= */
   let grafo = null;
   const trasmettitore = window.MostraAC ? new MostraAC.Trasmettitore("tv") : null;
   // l'audio del video passa da qui: una strada va alle casse, l'altra ai telefoni
@@ -767,7 +767,7 @@
     const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
     const sorgente = ctx.createMediaElementSource(video);
     const casse = ctx.createGain();
-    const diretta = ctx.createMediaStreamDestination();
+    const diretta = ctx.createGain();
     sorgente.connect(casse); casse.connect(ctx.destination);
     sorgente.connect(diretta);
     grafo = { ctx, casse, diretta };
@@ -787,7 +787,7 @@
     if (g.ctx.state === "suspended") g.ctx.resume().catch(() => {});
     impostaVolume();
     try { infoServer = await MostraAC.info(); } catch { infoServer = null; }
-    trasmettitore.avvia(g.diretta.stream);
+    trasmettitore.avvia(g.ctx, g.diretta);
   }
   // radio dal telefono: l'interruttore è salvato nel programma ponte di questo PC
   async function leggiRadio() {

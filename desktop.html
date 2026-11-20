@@ -862,14 +862,14 @@
   $("avvio").onclick = avvia;
   document.addEventListener("keydown", e => { if (!avviato && !e.repeat) { e.preventDefault(); avvia(); } });
 
-  /* ================= Audio in cuffia (QR code + diretta WebRTC) ================= */
+  /* ================= Audio in cuffia dal telefono (diretta sulla rete locale) ================= */
   const CON_SERVER = !!window.MostraAC && MostraAC.conServer();
   const trasmettitore = window.MostraAC ? new MostraAC.Trasmettitore("desktop") : null;
   let grafo = null, infoServer = null;
   function preparaGrafo() {
     if (grafo) return grafo;
     const ctx = new (window.AudioContext || window.webkitAudioContext)({ latencyHint: "interactive" });
-    const casse = ctx.createGain(), diretta = ctx.createMediaStreamDestination();
+    const casse = ctx.createGain(), diretta = ctx.createGain();
     casse.connect(ctx.destination);
     grafo = { ctx, casse, diretta };
     impostaVolume();
@@ -898,7 +898,7 @@
     document.querySelectorAll("video").forEach(collegaVideo);
     impostaVolume();
     try { infoServer = await MostraAC.info(); } catch { infoServer = null; }
-    trasmettitore.avvia(g.diretta.stream);
+    trasmettitore.avvia(g.ctx, g.diretta);
   }
   async function leggiRadio() {
     try { const j = await (await fetch("/api/config", { cache: "no-store" })).json(); $("setRadio").value = j.radio ? "1" : "0"; } catch {}

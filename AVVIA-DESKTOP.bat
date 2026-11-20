@@ -8,8 +8,6 @@ if %errorlevel% neq 0 (
   exit /b
 )
 netsh advfirewall firewall show rule name="Mostra AC" >nul 2>&1 || netsh advfirewall firewall add rule name="Mostra AC" dir=in action=allow protocol=TCP localport=8080 >nul
-rem ---- audio in diretta verso i telefoni: serve l'UDP dalla rete locale ----
-netsh advfirewall firewall show rule name="Mostra AC audio" >nul 2>&1 || netsh advfirewall firewall add rule name="Mostra AC audio" dir=in action=allow protocol=UDP remoteip=localsubnet profile=any >nul
 
 rem ---- cerca Python ----
 set "PY="

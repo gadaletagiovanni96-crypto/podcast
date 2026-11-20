@@ -76,7 +76,7 @@
     <span>📱 Tieni lo schermo acceso mentre ascolti</span>
   </div>
 
-  <audio id="audio" playsinline autoplay></audio>
+  <audio id="audio" playsinline></audio>
 
 <script src="diretta.js"></script>
 <script>
@@ -105,28 +105,26 @@
     }
     if (!trasmissioneAttiva) return stato("La diretta non è attiva: aspetta…", "ko");
     if (s === "diretta") { tentativi = 0; $("titolo").innerHTML = "Sei <em>in ascolto</em>"; return stato("In diretta", "ok"); }
-    if (tentativi >= 2) {
+    if (tentativi >= 4) {
       $("titolo").innerHTML = "L'audio <em>non arriva</em>";
-      return stato("Avvisa l'animatore: sul PC va chiuso e riaperto il programma AVVIA (e consentito l'accesso alla rete)", "ko");
+      return stato("Il collegamento continua a cadere: avvisa l'animatore", "ko");
     }
-    if (s === "tocca") return stato("Tocca di nuovo il pulsante", "att");
     if (s === "persa") return stato("Riconnessione…", "ko");
     stato("Collegamento…", "att");
   }
   rx.onStato = s => {
     disegna();
-    if (s === "persa" && vuoleAscoltare) { tentativi++; clearTimeout(riprova); riprova = setTimeout(() => vuoleAscoltare && rx.connetti().catch(() => {}), 1500); }
+    if (s === "persa" && vuoleAscoltare) { tentativi++; clearTimeout(riprova); riprova = setTimeout(() => vuoleAscoltare && trasmissioneAttiva && rx.connetti(), 1500); }
   };
 
   $("tasto").onclick = () => {
-    if (rx.stato === "tocca") { audio.play().catch(() => {}); rx._imposta("diretta"); return; }
     vuoleAscoltare = !vuoleAscoltare;
     if (vuoleAscoltare) {
-      audio.play().catch(() => {});      // sblocca l'audio su iPhone (serve un tocco)
-      wake();
-      if (trasmissioneAttiva) rx.connetti().catch(() => rx._imposta("persa"));
+      rx.sblocca();                      // sblocca l'audio (su iPhone serve un tocco)
+      wake(); tentativi = 0;
+      if (trasmissioneAttiva) rx.connetti();
     } else {
-      clearTimeout(riprova); rx.chiudi(); rx.stato = "spento"; audio.srcObject = null;
+      clearTimeout(riprova); rx._gen++; rx.chiudi(); rx.stato = "spento"; audio.pause();
     }
     disegna();
   };
@@ -139,7 +137,7 @@
       const o = j.onda;
       $("ondaInfo").innerHTML = o && o.titolo ? (o.playing ? "Sta andando: " : "In pausa: ") + "<b></b>" : "";
       if (o && o.titolo) $("ondaInfo").querySelector("b").textContent = o.titolo;
-      if (vuoleAscoltare && trasmissioneAttiva && (!prima || rx.stato === "persa" || rx.stato === "spento")) rx.connetti().catch(() => {});
+      if (vuoleAscoltare && trasmissioneAttiva && (!prima || rx.stato === "spento")) rx.connetti();
     } catch { trasmissioneAttiva = false; }
     disegna();
   }
@@ -148,9 +146,9 @@
   let wl = null;
   async function wake() { try { if ("wakeLock" in navigator && !wl) { wl = await navigator.wakeLock.request("screen"); wl.addEventListener("release", () => wl = null); } } catch {} }
   document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") { wake(); if (vuoleAscoltare && rx.stato !== "diretta") rx.connetti().catch(() => {}); }
+    if (document.visibilityState === "visible") { wake(); if (vuoleAscoltare) { rx.sblocca(); if (rx.stato !== "diretta") rx.connetti(); } }
   });
-  window.addEventListener("pagehide", () => rx.chiudi());
+  window.addEventListener("pagehide", () => { rx._gen++; rx.chiudi(); });
   disegna();
 })();
 </script>

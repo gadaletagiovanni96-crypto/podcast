@@ -31,9 +31,13 @@ blocco = threading.Lock()
 # telecomando + stato delle postazioni (per canale: "tv", "desktop")
 comandi = {"id": 0, "azione": ""}
 stati = {}            # canale -> (dati, istante)
-# segnalazione per l'audio in diretta (WebRTC)
-code = {}             # (canale, destinatario) -> [ (istante, messaggio) ]
-trasmettitori = {}    # canale -> {"visto": istante, "ascoltatori": n}
+# audio in diretta: il PC manda pezzi di audio, i telefoni li ricevono sulla stessa connessione web
+flussi = {}           # canale -> {"pezzi": [(n, byte)], "n": ultimo numero, "visto": istante, "ascoltatori": n}
+segnale = threading.Condition(blocco)
+
+
+def flusso(canale):
+    return flussi.setdefault(canale, {"pezzi": [], "n": 0, "visto": 0.0, "ascoltatori": 0})
 FILE_CONFIG = os.path.join(CARTELLA, "impostazioni.json")
 
 
@@ -145,18 +149,14 @@ class Gestore(BaseHTTPRequestHandler):
             if p == "/api/stato":
                 dati, t = stati.get(canale, (None, 0))
                 return self._json({"eta": int(min(99999, ora - t)), "tv": dati})
-            if p == "/api/rtc/ricevi":
-                per = q.get("per", "")
-                if per == "pc":
-                    trasmettitori[canale] = {"visto": ora, "ascoltatori": int(q.get("n", "0") or 0)}
-                coda = [m for (t, m) in code.pop((canale, per), []) if ora - t < 30]
-                return self._json({"messaggi": coda})
-            if p == "/api/rtc/stato":
-                tr = trasmettitori.get(canale)
-                attivo = bool(tr and ora - tr["visto"] < 5)
+            if p in ("/api/rtc/stato", "/api/flusso/stato"):
+                f = flusso(canale)
+                attivo = ora - f["visto"] < 4
                 dati, t = stati.get(canale, (None, 0))
-                return self._json({"attivo": attivo, "ascoltatori": tr["ascoltatori"] if attivo else 0,
+                return self._json({"attivo": attivo, "ascoltatori": f["ascoltatori"] if attivo else 0,
                                    "onda": dati if ora - t < 5 else None})
+        if p == "/api/flusso/ricevi":
+            return self._ricevi_flusso(canale)
         if p == "/api/config":
             return self._json(leggi_config())
         if p == "/api/radio":
@@ -171,10 +171,57 @@ class Gestore(BaseHTTPRequestHandler):
             return self._json({"attiva": True, "brani": brani})
         self._invia(404, b"{}", "application/json")
 
+    def _ricevi_flusso(self, canale):
+        """Manda al telefono l'audio in diretta finché resta collegato."""
+        self.close_connection = True
+        try:
+            self.connection.setsockopt(socket.IPPROTO_TCP, socket.TCP_NODELAY, 1)
+        except OSError:
+            pass
+        self.send_response(200)
+        self.send_header("Content-Type", "application/octet-stream")
+        self.send_header("Cache-Control", "no-store")
+        self.send_header("X-Frequenza", "24000")
+        self.send_header("Connection", "close")
+        self.end_headers()
+        with blocco:
+            f = flusso(canale)
+            f["ascoltatori"] += 1
+            ultimo = f["n"]
+        try:
+            while True:
+                with blocco:
+                    segnale.wait_for(lambda: flusso(canale)["n"] > ultimo, timeout=10)
+                    f = flusso(canale)
+                    nuovi = [b for (n, b) in f["pezzi"] if n > ultimo]
+                    ultimo = f["n"]
+                    if time.time() - f["visto"] > 30:
+                        break                    # il PC ha smesso di trasmettere
+                if nuovi:
+                    self.wfile.write(b"".join(nuovi))
+        except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError, OSError):
+            pass
+        finally:
+            with blocco:
+                flusso(canale)["ascoltatori"] -= 1
+
     # ---------- POST ----------
     def do_POST(self):
         p = urlparse(self.path).path
         q = {k: v[0] for k, v in parse_qs(urlparse(self.path).query).items()}
+        if p == "/api/flusso/invia":
+            n = min(int(self.headers.get("Content-Length") or 0), 400000)
+            pezzo = self.rfile.read(n)
+            with blocco:
+                f = flusso(q.get("canale", "tv"))
+                f["visto"] = time.time()
+                if pezzo:
+                    f["n"] += 1
+                    f["pezzi"].append((f["n"], pezzo))
+                    del f["pezzi"][:-50]
+                    segnale.notify_all()
+                risposta = {"ascoltatori": f["ascoltatori"]}
+            return self._json(risposta)
         dati = self._corpo_json()
         with blocco:
             if p == "/api/stato":
@@ -187,22 +234,6 @@ class Gestore(BaseHTTPRequestHandler):
                     c["radio"] = bool(dati["radio"])
                 scrivi_config(c)
                 return self._json(c)
-            if p == "/api/rtc/invia" and isinstance(dati, dict):
-                # I telefoni nascondono il proprio indirizzo dietro un nome ".local" che il PC
-                # spesso non sa risolvere: lo sostituiamo con l'indirizzo vero da cui arriva la richiesta.
-                ip = self.client_address[0]
-                if dati.get("tipo") == "risposta" and isinstance(dati.get("sdp"), str) and not ip.startswith("127."):
-                    dati["sdp"] = re.sub(r"(a=candidate:\S+ \d+ \S+ \d+ )(\S+\.local)( \d+ typ host)",
-                                         lambda m: m.group(1) + ip + m.group(3), dati["sdp"])
-                canale, a = str(dati.get("canale", "tv")), str(dati.get("a", ""))
-                coda = code.setdefault((canale, a), [])
-                coda.append((time.time(), dati))
-                del coda[:-50]
-                # pulizia delle code abbandonate
-                ora = time.time()
-                for k in [k for k, v in code.items() if not v or ora - v[-1][0] > 60]:
-                    code.pop(k, None)
-                return self._json({"ok": True})
         self._invia(404, b"{}", "application/json")
 
     # ---------- file (con supporto Range, indispensabile per l'audio su iPhone) ----------
