@@ -13,7 +13,13 @@ Non serve installare niente e funziona **anche senza internet**.
 - Se il browser chiede *"Consentire download multipli?"* rispondi **Consenti**.
 
 ## Password animatore
-Password predefinita: **`azione2026`** → cambiala subito dal pannello animatore (lucchetto in alto a destra).
+Password predefinita: **`azione2026`** → cambiala subito dal pannello animatore.
+
+## 🔑 Come aprire il pannello animatore (vale per tutte e tre le postazioni)
+Non c'è nessun lucchetto sullo schermo, così i ragazzi non lo toccano.
+- Premi il tasto **X** sulla tastiera → si apre la richiesta della password.
+- Senza tastiera (es. telefono con la Radio): **tieni premuto 3 secondi il logo giallo** in alto a sinistra.
+- Se qualcuno esce dallo schermo intero con Esc, compare una schermata "Torna allo studio": anche lì l'animatore preme **X**.
 
 ## Come funziona per i ragazzi
 1. Premono il grande pulsante giallo **REGISTRA** → conto alla rovescia 3‑2‑1 con bip.
@@ -55,7 +61,7 @@ Seconda postazione: una "radio" che fa ascoltare un audio scelto dall'animatore.
 
 ## Come si usa
 1. Apri `radio.html` e tocca **"Accendi la radio"** (si mette a schermo intero).
-2. Tocca il **lucchetto** in alto a destra → password (predefinita **`azione2026`**, separata da quella dello Studio Podcast).
+2. Tieni premuto 3 secondi il **logo giallo** in alto a sinistra (o premi **X** se c'è una tastiera) → password (predefinita **`azione2026`**, separata da quella dello Studio Podcast).
 3. Nel pannello: **"+ Carica audio dal dispositivo"** → scegli uno o più file (MP3 consigliato). Seleziona quello da far ascoltare e premi **"Salva e torna alla radio"**.
 4. I ragazzi premono **PLAY / PAUSA** e **INIZIO** (riporta la traccia all'inizio). Quando l'audio finisce **riparte automaticamente da capo**; se resta in pausa per 10 secondi torna da solo all'inizio.
 
@@ -74,7 +80,7 @@ Terza postazione: trasmette un video scelto dall'animatore, con lo stile di un v
 
 ## Come si usa
 1. Apri `tv.html` con Chrome/Edge sul PC collegato alla TV e clicca (o premi un tasto) per accenderla.
-2. Lucchetto in alto a destra → password (predefinita **`azione2026`**, separata dalle altre postazioni).
+2. Premi **X** sulla tastiera → password (predefinita **`azione2026`**, separata dalle altre postazioni).
 3. **"+ Carica video dal PC"** → scegli il video (MP4 consigliato), selezionalo e premi **"Salva e torna alla TV"**.
 
 ## Comandi per i ragazzi

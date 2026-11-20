@@ -280,9 +280,6 @@
   </div>
   <div class="header-right">
     <div class="chip conta">🎙️ Podcast registrati oggi: <b id="contaOggi">0</b></div>
-    <button class="icon-btn" id="btnLucchetto" title="Area riservata">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
-    </button>
   </div>
 </header>
 
@@ -406,7 +403,6 @@
     <div class="azioni">
       <button class="btn btn-giallo" id="btnTornaFs">Torna allo studio</button>
     </div>
-    <div class="azioni"><button class="btn btn-vetro btn-piccolo" id="btnFsAdmin">🔒 Sono l'animatore</button></div>
   </div>
 </div>
 
@@ -531,7 +527,6 @@
   document.addEventListener("fullscreenchange", onFsChange);
   document.addEventListener("webkitfullscreenchange", onFsChange);
   $("btnTornaFs").onclick = async () => { await entraFullscreen(); onFsChange(); };
-  $("btnFsAdmin").onclick = () => chiediPassword(apriAdmin);
 
   // Blocca tasto destro, scorciatoie comuni e chiusura accidentale
   document.addEventListener("contextmenu", e => e.preventDefault());
@@ -573,7 +568,23 @@
       $("inPassword").select();
     }
   };
-  $("btnLucchetto").onclick = () => chiediPassword(apriAdmin);
+
+  /* Area riservata: tasto X (oppure tieni premuto 3 secondi sul logo in alto a sinistra) */
+  document.addEventListener("keydown", e => {
+    if ((e.key === "x" || e.key === "X") && !e.ctrlKey && !e.altKey && !e.metaKey && !e.repeat
+        && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName)
+        && !$("ovPassword").classList.contains("show") && !$("ovAdmin").classList.contains("show")) {
+      e.preventDefault(); e.stopImmediatePropagation();
+      chiediPassword(apriAdmin);
+    }
+  }, true);
+  (() => {
+    const logo = document.querySelector(".brand-logo"); if (!logo) return;
+    let t = null;
+    const via = () => { clearTimeout(t); t = null; };
+    logo.addEventListener("pointerdown", () => { via(); t = setTimeout(() => { t = null; chiediPassword(apriAdmin); }, 3000); });
+    ["pointerup", "pointerleave", "pointercancel"].forEach(ev => logo.addEventListener(ev, via));
+  })();
 
   /* ======================= Conferma ======================= */
   function conferma(titolo, testo, siTxt, cb) {
@@ -997,7 +1008,7 @@
     $("ovAdmin").classList.remove("show");
     sbloccato = true;
     esciFullscreen();
-    toast("Schermo intero disattivato: ora puoi chiudere la scheda. Per tornare allo studio usa il lucchetto.", 6000);
+    toast("Schermo intero disattivato: ora puoi chiudere la scheda. Per tornare allo studio premi X.", 6000);
   };
   $("btnEsportaCsv").onclick = () => {
     const esc = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
