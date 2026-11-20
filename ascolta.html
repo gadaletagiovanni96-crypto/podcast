@@ -89,7 +89,7 @@
 
   const audio = $("audio");
   const rx = new MostraAC.Ricevitore(canale, audio);
-  let vuoleAscoltare = false, trasmissioneAttiva = false, riprova = null;
+  let vuoleAscoltare = false, trasmissioneAttiva = false, riprova = null, tentativi = 0;
 
   function stato(testo, tipo) { $("statoTxt").textContent = testo; $("stato").className = "stato " + (tipo || ""); }
   function disegna() {
@@ -104,14 +104,18 @@
       return stato(trasmissioneAttiva ? "Diretta disponibile" : "In attesa della postazione…", trasmissioneAttiva ? "att" : "");
     }
     if (!trasmissioneAttiva) return stato("La diretta non è attiva: aspetta…", "ko");
-    if (s === "diretta") { $("titolo").innerHTML = "Sei <em>in ascolto</em>"; return stato("In diretta", "ok"); }
+    if (s === "diretta") { tentativi = 0; $("titolo").innerHTML = "Sei <em>in ascolto</em>"; return stato("In diretta", "ok"); }
+    if (tentativi >= 2) {
+      $("titolo").innerHTML = "L'audio <em>non arriva</em>";
+      return stato("Avvisa l'animatore: sul PC va chiuso e riaperto il programma AVVIA (e consentito l'accesso alla rete)", "ko");
+    }
     if (s === "tocca") return stato("Tocca di nuovo il pulsante", "att");
     if (s === "persa") return stato("Riconnessione…", "ko");
     stato("Collegamento…", "att");
   }
   rx.onStato = s => {
     disegna();
-    if (s === "persa" && vuoleAscoltare) { clearTimeout(riprova); riprova = setTimeout(() => vuoleAscoltare && rx.connetti().catch(() => {}), 1500); }
+    if (s === "persa" && vuoleAscoltare) { tentativi++; clearTimeout(riprova); riprova = setTimeout(() => vuoleAscoltare && rx.connetti().catch(() => {}), 1500); }
   };
 
   $("tasto").onclick = () => {

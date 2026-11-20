@@ -188,6 +188,12 @@ class Gestore(BaseHTTPRequestHandler):
                 scrivi_config(c)
                 return self._json(c)
             if p == "/api/rtc/invia" and isinstance(dati, dict):
+                # I telefoni nascondono il proprio indirizzo dietro un nome ".local" che il PC
+                # spesso non sa risolvere: lo sostituiamo con l'indirizzo vero da cui arriva la richiesta.
+                ip = self.client_address[0]
+                if dati.get("tipo") == "risposta" and isinstance(dati.get("sdp"), str) and not ip.startswith("127."):
+                    dati["sdp"] = re.sub(r"(a=candidate:\S+ \d+ \S+ \d+ )(\S+\.local)( \d+ typ host)",
+                                         lambda m: m.group(1) + ip + m.group(3), dati["sdp"])
                 canale, a = str(dati.get("canale", "tv")), str(dati.get("a", ""))
                 coda = code.setdefault((canale, a), [])
                 coda.append((time.time(), dati))

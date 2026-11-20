@@ -158,6 +158,8 @@
           await pc.setLocalDescription(ans);
           await attendiIce(pc, 1500);
           await invia({ canale: this.canale, a: "pc", da: this.id, tipo: "risposta", sdp: opusStereo(pc.localDescription.sdp) });
+          // se dopo 10 secondi l'audio non è arrivato, si riprova
+          setTimeout(() => { if (gen === this._gen && pc.connectionState !== "connected") this._imposta("persa"); }, 10000);
           return;
         }
         await attendi(300);
