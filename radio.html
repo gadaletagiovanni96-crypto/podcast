@@ -132,6 +132,16 @@
     position: relative; transition: transform .6s ease;
   }
   .manopola::after { content: ""; position: absolute; top: 7px; left: 50%; width: 4px; height: 14px; margin-left: -2px; border-radius: 2px; background: var(--blu-notte); }
+  .riavvia {
+    width: 66px; height: 66px; border-radius: 50%; flex: none; cursor: pointer; border: none;
+    background: conic-gradient(from 0deg, #e8eaef, #9aa1ad, #e8eaef, #9aa1ad, #e8eaef);
+    box-shadow: 0 6px 14px rgba(0,0,0,0.4), inset 0 0 0 5px rgba(255,255,255,0.3);
+    color: var(--blu-notte); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+    font-weight: 900; font-size: .58rem; letter-spacing: .5px; transition: transform .15s;
+  }
+  .riavvia svg { width: 24px; height: 24px; }
+  .riavvia:active { transform: scale(0.92) rotate(-30deg); }
+  .riavvia:disabled { opacity: .5; }
   .play {
     width: 128px; height: 128px; border-radius: 50%; border: none; cursor: pointer; flex: none;
     background: radial-gradient(circle at 35% 30%, #ffe48f, var(--giallo) 55%, #e9a800);
@@ -228,7 +238,8 @@
     .griglia { grid-template-columns: 1fr 1fr; }
   }
   @media (max-width: 380px) {
-    .manopola { width: 46px; height: 46px; }
+    .manopola, .riavvia { width: 54px; height: 54px; }
+    .riavvia svg { width: 20px; height: 20px; }
     .play { width: 112px; height: 112px; }
     .griglia { grid-template-columns: 1fr; }
   }
@@ -237,7 +248,7 @@
     .speaker { height: 170px; }
     .play { width: 150px; height: 150px; }
     .play svg { width: 62px; height: 62px; }
-    .manopola { width: 70px; height: 70px; }
+    .manopola, .riavvia { width: 78px; height: 78px; }
   }
 </style>
 </head>
@@ -277,7 +288,10 @@
       </div>
       <div class="speaker" id="speaker"></div>
       <div class="comandi">
-        <div class="manopola" id="manopolaSx"></div>
+        <button class="riavvia" id="btnInizio" aria-label="Torna all'inizio">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/></svg>
+          <span>INIZIO</span>
+        </button>
         <button class="play" id="btnPlay" aria-label="Play">
           <svg viewBox="0 0 24 24" fill="#061a3a" id="icoPlay"><path d="M8 5v14l11-7z"/></svg>
           <span id="lblPlay">PLAY</span>
@@ -426,12 +440,12 @@
       audio.src = urlCorrente;
       audio.load();
       impostaTitolo(branoCorrente.nome);
-      $("btnPlay").disabled = false;
+      $("btnPlay").disabled = false; $("btnInizio").disabled = false;
       $("avvisoVuoto").classList.remove("show");
     } else {
       audio.removeAttribute("src");
       impostaTitolo("Nessun audio");
-      $("btnPlay").disabled = true;
+      $("btnPlay").disabled = true; $("btnInizio").disabled = true;
       $("avvisoVuoto").classList.add("show");
     }
     aggiornaUi(); aggiornaTempo();
@@ -452,7 +466,34 @@
       : '<path d="M8 5v14l11-7z"/>';
     $("lblPlay").textContent = suona ? "PAUSA" : "PLAY";
     $("btnPlay").setAttribute("aria-label", suona ? "Pausa" : "Play");
-    $("suggerimento").textContent = !branoCorrente ? "" : suona ? "Buon ascolto! Premi PAUSA per fermare ⏸" : "Premi PLAY per accendere la radio 🎧";
+    if (!branoCorrente) $("suggerimento").textContent = "";
+    else if (suona) $("suggerimento").textContent = "Buon ascolto! Premi PAUSA per fermare ⏸";
+    else if (!timerPausa) $("suggerimento").textContent = "Premi PLAY per accendere la radio 🎧";
+  }
+
+  /* Dopo 10 secondi di pausa la traccia torna all'inizio */
+  const SECONDI_PAUSA = 10;
+  let timerPausa = null;
+  function annullaTimerPausa() { clearInterval(timerPausa); timerPausa = null; }
+  function avviaTimerPausa() {
+    annullaTimerPausa();
+    if (!branoCorrente || audio.currentTime < 0.5) return; // già all'inizio
+    let resta = SECONDI_PAUSA;
+    const scrivi = () => $("suggerimento").textContent = "In pausa · si torna all'inizio tra " + resta + " s";
+    scrivi();
+    timerPausa = setInterval(() => {
+      resta--;
+      if (resta <= 0) {
+        annullaTimerPausa();
+        if (audio.paused) { audio.currentTime = 0; aggiornaTempo(); }
+        aggiornaUi();
+      } else scrivi();
+    }, 1000);
+  }
+  function tornaInizio() {
+    if (!branoCorrente) return;
+    audio.currentTime = 0; aggiornaTempo();
+    annullaTimerPausa(); aggiornaUi();
   }
   function aggiornaTempo() {
     const tot = isFinite(audio.duration) ? audio.duration : 0;
@@ -461,8 +502,9 @@
     const p = tot ? audio.currentTime / tot : 0;
     $("ago").style.left = `calc(${(p * 100).toFixed(2)}% - ${(p * 3).toFixed(2)}px)`;
   }
-  audio.addEventListener("play", aggiornaUi);
-  audio.addEventListener("pause", aggiornaUi);
+  audio.addEventListener("play", () => { annullaTimerPausa(); aggiornaUi(); });
+  audio.addEventListener("pause", () => { if (!audio.ended) avviaTimerPausa(); aggiornaUi(); });
+  $("btnInizio").onclick = tornaInizio;
   audio.addEventListener("timeupdate", aggiornaTempo);
   audio.addEventListener("loadedmetadata", aggiornaTempo);
   audio.addEventListener("error", () => { if (audio.getAttribute("src")) toast("⚠️ Questo audio non si riesce a riprodurre. Prova un file MP3.", 5000); });
@@ -511,7 +553,6 @@
     }
     if (suona) {
       const ang = (t / 40) % 360;
-      $("manopolaSx").style.transform = `rotate(${Math.sin(t / 1500) * 40}deg)`;
       $("manopolaDx").style.transform = `rotate(${-Math.sin(t / 1800) * 40}deg)`;
     }
     requestAnimationFrame(animazione);

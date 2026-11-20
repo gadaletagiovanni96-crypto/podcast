@@ -57,7 +57,7 @@ Seconda postazione: una "radio" che fa ascoltare un audio scelto dall'animatore.
 1. Apri `radio.html` e tocca **"Accendi la radio"** (si mette a schermo intero).
 2. Tocca il **lucchetto** in alto a destra → password (predefinita **`azione2026`**, separata da quella dello Studio Podcast).
 3. Nel pannello: **"+ Carica audio dal dispositivo"** → scegli uno o più file (MP3 consigliato). Seleziona quello da far ascoltare e premi **"Salva e torna alla radio"**.
-4. I ragazzi premono **PLAY / PAUSA**. Quando l'audio finisce **riparte automaticamente da capo**.
+4. I ragazzi premono **PLAY / PAUSA** e **INIZIO** (riporta la traccia all'inizio). Quando l'audio finisce **riparte automaticamente da capo**; se resta in pausa per 10 secondi torna da solo all'inizio.
 
 I file caricati restano salvati nel browser di quel dispositivo: anche chiudendo la pagina non serve ricaricarli.
 
