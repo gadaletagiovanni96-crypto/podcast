@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Studio Podcast</title>
+<style>
+  :root {
+    --blu-notte: #061a3a;
+    --blu: #0b3d91;
+    --blu-chiaro: #1e63d6;
+    --giallo: #ffc72c;
+    --giallo-chiaro: #ffe08a;
+    --bianco: #ffffff;
+    --rosso: #ff4d5e;
+    --verde: #2ecc71;
+    --testo-soft: rgba(255,255,255,0.75);
+    --vetro: rgba(255,255,255,0.08);
+    --vetro-bordo: rgba(255,255,255,0.16);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+  body {
+    font-family: "Segoe UI", "Nunito", "Helvetica Neue", Arial, sans-serif;
+    color: var(--bianco);
+    background: var(--blu-notte);
+    background-image:
+      radial-gradient(circle at 15% 20%, rgba(30,99,214,0.55), transparent 45%),
+      radial-gradient(circle at 85% 80%, rgba(255,199,44,0.22), transparent 40%),
+      linear-gradient(160deg, #0b3d91 0%, #061a3a 70%);
+    overflow: hidden;
+    user-select: none;
+    -webkit-user-select: none;
+    -webkit-tap-highlight-color: transparent;
+  }
+  input { user-select: text; -webkit-user-select: text; }
+
+  /* decorazioni di sfondo */
+  .bg-deco { position: fixed; inset: 0; pointer-events: none; overflow: hidden; z-index: 0; }
+  .bg-deco span {
+    position: absolute; border-radius: 50%;
+    border: 2px solid rgba(255,199,44,0.15);
+    animation: galleggia 18s ease-in-out infinite;
+  }
+  .bg-deco span:nth-child(1){ width: 420px; height: 420px; top: -120px; right: -100px; }
+  .bg-deco span:nth-child(2){ width: 260px; height: 260px; bottom: -60px; left: -60px; animation-delay: -6s; border-color: rgba(255,255,255,0.08);}
+  .bg-deco span:nth-child(3){ width: 120px; height: 120px; top: 30%; left: 8%; animation-delay: -12s; background: rgba(255,199,44,0.06); border: none;}
+  @keyframes galleggia { 0%,100%{ transform: translateY(0) } 50%{ transform: translateY(24px) } }
+
+  /* intestazione */
+  header {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 5;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 22px 34px;
+  }
+  .brand { display: flex; align-items: center; gap: 14px; }
+  .brand-logo {
+    width: 54px; height: 54px; border-radius: 16px;
+    background: var(--giallo); display: grid; place-items: center;
+    box-shadow: 0 6px 20px rgba(255,199,44,0.35);
+  }
+  .brand-logo svg { width: 30px; height: 30px; }
+  .brand h1 { font-size: 1.55rem; font-weight: 800; letter-spacing: 0.3px; }
+  .brand p { font-size: 0.95rem; color: var(--giallo); font-weight: 600; }
+  .header-right { display: flex; align-items: center; gap: 14px; }
+  .chip {
+    background: var(--vetro); border: 1px solid var(--vetro-bordo);
+    padding: 8px 16px; border-radius: 999px; font-size: 0.95rem; color: var(--testo-soft);
+    display: flex; align-items: center; gap: 8px;
+  }
+  .chip b { color: var(--giallo); }
+  .icon-btn {
+    width: 44px; height: 44px; border-radius: 50%;
+    background: var(--vetro); border: 1px solid var(--vetro-bordo);
+    color: var(--testo-soft); cursor: pointer; display: grid; place-items: center;
+    transition: background .2s;
+  }
+  .icon-btn:hover { background: rgba(255,255,255,0.16); }
+  .icon-btn svg { width: 20px; height: 20px; }
+
+  /* schermate */
+  main { position: relative; z-index: 1; height: 100%; }
+  .screen {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    padding: 110px 24px 40px;
+    opacity: 0; pointer-events: none; transform: scale(0.98);
+    transition: opacity .35s ease, transform .35s ease;
+    text-align: center;
+  }
+  .screen.active { opacity: 1; pointer-events: auto; transform: none; }
+
+  h2.titolo { font-size: clamp(2rem, 4.2vw, 3.4rem); font-weight: 800; line-height: 1.1; }
+  h2.titolo em { font-style: normal; color: var(--giallo); }
+  p.sotto { font-size: clamp(1.05rem, 1.7vw, 1.35rem); color: var(--testo-soft); margin-top: 12px; max-width: 720px; }
+
+  /* pulsante principale */
+  .rec-wrap { position: relative; margin: 46px 0 30px; width: 260px; height: 260px; display: grid; place-items: center; }
+  .rec-wrap .onda {
+    position: absolute; inset: 0; border-radius: 50%;
+    border: 3px solid var(--giallo); opacity: 0;
+    animation: onda 2.6s ease-out infinite;
+  }
+  .rec-wrap .onda:nth-child(2) { animation-delay: 1.3s; }
+  @keyframes onda { 0%{ transform: scale(0.75); opacity: .7 } 100%{ transform: scale(1.25); opacity: 0 } }
+  .rec-btn {
+    position: relative; width: 210px; height: 210px; border-radius: 50%;
+    border: none; cursor: pointer;
+    background: radial-gradient(circle at 35% 30%, #ffe48f, var(--giallo) 55%, #e9a800);
+    box-shadow: 0 18px 50px rgba(255,199,44,0.45), inset 0 -8px 20px rgba(0,0,0,0.12);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+    color: var(--blu-notte); font-weight: 800; font-size: 1.25rem; letter-spacing: 1px;
+    transition: transform .15s ease, box-shadow .2s;
+  }
+  .rec-btn:hover { transform: scale(1.04); }
+  .rec-btn:active { transform: scale(0.96); }
+  .rec-btn svg { width: 74px; height: 74px; }
+  .rec-btn:disabled { filter: grayscale(0.7); opacity: .6; cursor: not-allowed; }
+
+  /* livello microfono */
+  .mic-status { display: flex; align-items: center; gap: 14px; color: var(--testo-soft); font-size: 1rem; }
+  .meter { display: flex; gap: 4px; align-items: flex-end; height: 26px; }
+  .meter i { width: 6px; background: rgba(255,255,255,0.2); border-radius: 3px; transition: background .08s, height .08s; height: 30%; }
+
+  /* consigli */
+  .consigli { display: flex; gap: 16px; margin-top: 34px; flex-wrap: wrap; justify-content: center; }
+  .consiglio {
+    background: var(--vetro); border: 1px solid var(--vetro-bordo); border-radius: 18px;
+    padding: 14px 20px; display: flex; align-items: center; gap: 12px; font-size: 1rem; max-width: 270px; text-align: left;
+  }
+  .consiglio .n {
+    flex: none; width: 34px; height: 34px; border-radius: 50%; background: var(--giallo); color: var(--blu-notte);
+    font-weight: 800; display: grid; place-items: center;
+  }
+
+  /* countdown */
+  .countdown { font-size: clamp(9rem, 22vw, 16rem); font-weight: 900; color: var(--giallo); text-shadow: 0 10px 50px rgba(255,199,44,0.45); }
+  .countdown.pop { animation: pop .9s ease; }
+  @keyframes pop { 0%{ transform: scale(1.6); opacity: 0 } 30%{ transform: scale(1); opacity: 1 } 100%{ transform: scale(0.85); opacity: .2 } }
+
+  /* registrazione */
+  .stato-rec {
+    display: inline-flex; align-items: center; gap: 10px; padding: 10px 22px; border-radius: 999px;
+    background: rgba(255,77,94,0.15); border: 1px solid rgba(255,77,94,0.5); font-weight: 700; font-size: 1.1rem; letter-spacing: 1px;
+  }
+  .stato-rec .dot { width: 14px; height: 14px; border-radius: 50%; background: var(--rosso); animation: lampeggia 1.1s infinite; }
+  .stato-rec.pausa { background: rgba(255,199,44,0.15); border-color: rgba(255,199,44,0.5); color: var(--giallo); }
+  .stato-rec.pausa .dot { background: var(--giallo); animation: none; }
+  @keyframes lampeggia { 50% { opacity: .2 } }
+  .timer { font-size: clamp(4.5rem, 11vw, 8rem); font-weight: 800; font-variant-numeric: tabular-nums; margin: 18px 0 4px; letter-spacing: 2px; }
+  .timer-max { color: var(--testo-soft); font-size: 1.1rem; }
+  .timer-max.warn { color: var(--giallo); font-weight: 700; }
+  .barra { width: min(620px, 80vw); height: 10px; border-radius: 99px; background: rgba(255,255,255,0.12); margin: 14px auto 0; overflow: hidden; }
+  .barra > div { height: 100%; width: 0; background: linear-gradient(90deg, var(--giallo), #ffdd77); border-radius: 99px; transition: width .3s linear; }
+  canvas#onde { width: min(820px, 88vw); height: 130px; margin: 26px 0 10px; }
+
+  .controlli { display: flex; gap: 22px; margin-top: 18px; flex-wrap: wrap; justify-content: center; }
+  .btn {
+    border: none; cursor: pointer; border-radius: 20px; padding: 18px 34px; font-size: 1.2rem; font-weight: 800;
+    display: inline-flex; align-items: center; gap: 12px; transition: transform .12s ease, filter .2s, opacity .2s;
+    font-family: inherit;
+  }
+  .btn svg { width: 26px; height: 26px; }
+  .btn:active { transform: scale(0.96); }
+  .btn:disabled { opacity: .45; cursor: not-allowed; }
+  .btn-giallo { background: var(--giallo); color: var(--blu-notte); box-shadow: 0 10px 28px rgba(255,199,44,0.35); }
+  .btn-blu { background: var(--blu-chiaro); color: var(--bianco); box-shadow: 0 10px 28px rgba(30,99,214,0.4); }
+  .btn-vetro { background: var(--vetro); color: var(--bianco); border: 1px solid var(--vetro-bordo); }
+  .btn-rosso { background: var(--rosso); color: var(--bianco); box-shadow: 0 10px 28px rgba(255,77,94,0.35); }
+  .btn-piccolo { padding: 12px 22px; font-size: 1rem; border-radius: 14px; }
+
+  /* revisione */
+  .card {
+    background: rgba(6,26,58,0.65); border: 1px solid var(--vetro-bordo); border-radius: 28px;
+    padding: 34px 40px; width: min(760px, 94vw); backdrop-filter: blur(10px); text-align: left;
+    box-shadow: 0 30px 80px rgba(0,0,0,0.35);
+  }
+  .card h3 { font-size: 1.6rem; font-weight: 800; margin-bottom: 6px; }
+  .card .desc { color: var(--testo-soft); margin-bottom: 22px; }
+  .player {
+    display: flex; align-items: center; gap: 18px; background: var(--vetro); border-radius: 18px; padding: 14px 18px; margin-bottom: 26px;
+  }
+  .play-btn { width: 56px; height: 56px; border-radius: 50%; border: none; background: var(--giallo); cursor: pointer; display: grid; place-items: center; flex: none; }
+  .play-btn svg { width: 24px; height: 24px; }
+  .play-bar { flex: 1; height: 8px; background: rgba(255,255,255,0.15); border-radius: 99px; cursor: pointer; position: relative; }
+  .play-bar > div { position: absolute; left: 0; top: 0; bottom: 0; width: 0; background: var(--giallo); border-radius: 99px; }
+  .play-time { font-variant-numeric: tabular-nums; color: var(--testo-soft); min-width: 110px; text-align: right; }
+  label.lbl { display: block; font-weight: 700; margin-bottom: 10px; font-size: 1.05rem; }
+  label.lbl small { color: var(--testo-soft); font-weight: 400; }
+  .campo {
+    width: 100%; padding: 14px 18px; border-radius: 14px; border: 2px solid var(--vetro-bordo); background: rgba(255,255,255,0.06);
+    color: var(--bianco); font-size: 1.1rem; font-family: inherit; outline: none; transition: border-color .2s, background .2s;
+  }
+  .campo:focus { border-color: var(--giallo); background: rgba(255,255,255,0.1); }
+  .campo::placeholder { color: rgba(255,255,255,0.4); }
+  .nomi { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .nome-riga { position: relative; }
+  .nome-riga .campo { padding-right: 46px; }
+  .nome-riga button {
+    position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border-radius: 50%;
+    border: none; background: rgba(255,255,255,0.1); color: var(--bianco); cursor: pointer; font-size: 1.1rem;
+  }
+  .aggiungi { background: none; border: 2px dashed var(--vetro-bordo); color: var(--giallo); padding: 12px; border-radius: 14px; width: 100%; font-weight: 700; font-size: 1rem; cursor: pointer; font-family: inherit; margin-bottom: 20px; }
+  .aggiungi:hover { border-color: var(--giallo); }
+  .riga-azioni { display: flex; gap: 14px; justify-content: space-between; margin-top: 26px; flex-wrap: wrap; }
+  .errore { color: var(--rosso); font-weight: 700; margin-top: 8px; min-height: 1.3em; }
+
+  /* salvato */
+  .ok-icon { width: 150px; height: 150px; border-radius: 50%; background: var(--giallo); display: grid; place-items: center; margin-bottom: 30px; box-shadow: 0 20px 60px rgba(255,199,44,0.45); animation: pop2 .6s ease; }
+  .ok-icon svg { width: 80px; height: 80px; }
+  @keyframes pop2 { 0%{ transform: scale(0) } 70%{ transform: scale(1.12) } 100%{ transform: scale(1) } }
+  .file-nome { margin-top: 18px; background: var(--vetro); border: 1px solid var(--vetro-bordo); padding: 10px 18px; border-radius: 12px; font-family: Consolas, monospace; font-size: .95rem; color: var(--giallo-chiaro); word-break: break-all; max-width: 90vw; }
+  .ritorno { margin-top: 30px; color: var(--testo-soft); }
+  .confetto { position: fixed; top: -20px; width: 12px; height: 18px; z-index: 30; pointer-events: none; animation: cade linear forwards; }
+  @keyframes cade { to { transform: translateY(110vh) rotate(720deg); } }
+
+  /* overlay / modali */
+  .overlay {
+    position: fixed; inset: 0; z-index: 40; display: none; align-items: center; justify-content: center;
+    background: rgba(3,12,30,0.82); backdrop-filter: blur(6px); padding: 20px;
+  }
+  .overlay.show { display: flex; }
+  .modal {
+    background: linear-gradient(160deg, #0f4aa8, #0a2a63); border: 1px solid var(--vetro-bordo); border-radius: 26px; padding: 32px 36px;
+    width: min(480px, 94vw); box-shadow: 0 30px 80px rgba(0,0,0,0.5); text-align: center;
+  }
+  .modal.largo { width: min(720px, 96vw); text-align: left; max-height: 92vh; overflow: auto; }
+  .modal h3 { font-size: 1.5rem; margin-bottom: 8px; }
+  .modal p { color: var(--testo-soft); margin-bottom: 20px; }
+  .modal .azioni { display: flex; gap: 12px; justify-content: center; margin-top: 22px; flex-wrap: wrap; }
+  .modal .shake { animation: shake .4s; }
+  @keyframes shake { 20%,60%{ transform: translateX(-10px) } 40%,80%{ transform: translateX(10px) } }
+  .impostazioni { display: grid; grid-template-columns: 1fr 1fr; gap: 16px 20px; margin: 18px 0; }
+  .impostazioni .full { grid-column: 1 / -1; }
+  .impostazioni label { font-weight: 700; font-size: .95rem; display: block; margin-bottom: 6px; }
+  .impostazioni select.campo option { color: #000; }
+  .storico { margin-top: 10px; max-height: 200px; overflow: auto; background: rgba(0,0,0,0.2); border-radius: 12px; padding: 8px 14px; font-size: .9rem; }
+  .storico div { padding: 6px 0; border-bottom: 1px solid rgba(255,255,255,0.08); display: flex; justify-content: space-between; gap: 12px; }
+  .storico div:last-child { border-bottom: none; }
+  .sezione-titolo { font-weight: 800; color: var(--giallo); margin-top: 18px; }
+
+  /* schermata iniziale */
+  .start-card { cursor: pointer; }
+  .start-icon { width: 140px; height: 140px; border-radius: 40px; background: var(--giallo); display: grid; place-items: center; margin: 0 auto 32px; box-shadow: 0 20px 60px rgba(255,199,44,0.4); animation: galleggia 4s ease-in-out infinite; }
+  .start-icon svg { width: 80px; height: 80px; }
+
+  .toast {
+    position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(120px); z-index: 60;
+    background: var(--bianco); color: var(--blu-notte); padding: 14px 26px; border-radius: 14px; font-weight: 700;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.35); transition: transform .3s ease; max-width: 90vw; text-align: center;
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 760px) {
+    header { padding: 14px 16px; }
+    .brand h1 { font-size: 1.1rem; }
+    .nomi, .impostazioni { grid-template-columns: 1fr; }
+    .card { padding: 24px 20px; }
+    .chip.conta { display: none; }
+  }
+  @media (max-height: 760px) {
+    .rec-wrap { width: 210px; height: 210px; margin: 26px 0 18px; }
+    .rec-btn { width: 170px; height: 170px; }
+    .consigli { margin-top: 18px; }
+  }
+</style>
+</head>
+<body>
+<div class="bg-deco"><span></span><span></span><span></span></div>
+
+<header>
+  <div class="brand">
+    <div class="brand-logo">
+      <svg viewBox="0 0 24 24" fill="#061a3a"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg>
+    </div>
+    <div>
+      <h1 id="txtTitolo">Studio Podcast</h1>
+      <p id="txtSottotitolo">Azione Cattolica</p>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="chip conta">🎙️ Podcast registrati oggi: <b id="contaOggi">0</b></div>
+    <button class="icon-btn" id="btnLucchetto" title="Area riservata">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>
+    </button>
+  </div>
+</header>
+
+<main>
+  <!-- 0. Avvio -->
+  <section class="screen active" id="sAvvio">
+    <div class="start-card" id="startCard">
+      <div class="start-icon">
+        <svg viewBox="0 0 24 24" fill="#061a3a"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg>
+      </div>
+      <h2 class="titolo">Benvenuti nello <em>Studio Podcast</em></h2>
+      <p class="sotto" style="margin-left:auto;margin-right:auto">Tocca lo schermo per accendere lo studio</p>
+      <div style="margin-top:34px"><button class="btn btn-giallo" id="btnAvvia">Accendi lo studio ▶</button></div>
+      <p class="sotto" id="avvioErrore" style="color:var(--rosso);font-weight:700;margin-left:auto;margin-right:auto"></p>
+    </div>
+  </section>
+
+  <!-- 1. Pronti -->
+  <section class="screen" id="sPronti">
+    <h2 class="titolo">Siete pronti ad andare <em>in onda?</em></h2>
+    <p class="sotto">Premete il pulsante giallo: dopo un conto alla rovescia di 3 secondi inizia la registrazione.</p>
+    <div class="rec-wrap">
+      <div class="onda"></div><div class="onda"></div>
+      <button class="rec-btn" id="btnRec">
+        <svg viewBox="0 0 24 24" fill="#061a3a"><path d="M12 14a3 3 0 0 0 3-3V5a3 3 0 0 0-6 0v6a3 3 0 0 0 3 3Zm5-3a5 5 0 0 1-10 0H5a7 7 0 0 0 6 6.92V21h2v-3.08A7 7 0 0 0 19 11h-2Z"/></svg>
+        REGISTRA
+      </button>
+    </div>
+    <div class="mic-status">
+      <span>Prova il microfono, parlate:</span>
+      <div class="meter" id="meterPronti"></div>
+    </div>
+    <div class="consigli">
+      <div class="consiglio"><span class="n">1</span>Parlate a circa 20 cm dal microfono</div>
+      <div class="consiglio"><span class="n">2</span>Uno alla volta, senza sovrapporvi</div>
+      <div class="consiglio"><span class="n">3</span><span>Durata massima: <b id="txtMaxDurata">5 minuti</b></span></div>
+    </div>
+  </section>
+
+  <!-- 2. Countdown -->
+  <section class="screen" id="sCountdown">
+    <p class="sotto" style="margin-bottom:10px">Preparatevi…</p>
+    <div class="countdown" id="numCountdown">3</div>
+  </section>
+
+  <!-- 3. Registrazione -->
+  <section class="screen" id="sRec">
+    <div class="stato-rec" id="statoRec"><span class="dot"></span><span id="statoRecTxt">IN ONDA</span></div>
+    <div class="timer" id="timer">00:00</div>
+    <div class="timer-max" id="timerMax">Tempo massimo 05:00</div>
+    <div class="barra"><div id="barraTempo"></div></div>
+    <canvas id="onde" width="1640" height="260"></canvas>
+    <div class="controlli">
+      <button class="btn btn-giallo" id="btnPausa">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/></svg>
+        <span>Pausa</span>
+      </button>
+      <button class="btn btn-rosso" id="btnStop">
+        <svg viewBox="0 0 24 24" fill="currentColor"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>
+        Ho finito
+      </button>
+    </div>
+  </section>
+
+  <!-- 4. Revisione e salvataggio -->
+  <section class="screen" id="sRevisione">
+    <div class="card">
+      <h3>🎧 Ottimo lavoro! Riascoltate il vostro podcast</h3>
+      <p class="desc">Se vi piace, scrivete i vostri nomi e premete <b>Salva</b>. Se non vi convince, potete rifarlo.</p>
+      <div class="player">
+        <button class="play-btn" id="btnPlay"><svg viewBox="0 0 24 24" fill="#061a3a" id="icoPlay"><path d="M8 5v14l11-7z"/></svg></button>
+        <div class="play-bar" id="playBar"><div id="playProg"></div></div>
+        <div class="play-time" id="playTime">00:00 / 00:00</div>
+      </div>
+      <label class="lbl">Titolo del podcast <small>(facoltativo)</small></label>
+      <input class="campo" id="inTitolo" maxlength="60" placeholder="Es. La nostra estate insieme" style="margin-bottom:20px" autocomplete="off">
+      <label class="lbl">Nomi dei componenti del gruppo <small>(almeno uno)</small></label>
+      <div class="nomi" id="listaNomi"></div>
+      <button class="aggiungi" id="btnAggiungiNome">+ Aggiungi un altro nome</button>
+      <div class="errore" id="errNomi"></div>
+      <div class="riga-azioni">
+        <button class="btn btn-vetro btn-piccolo" id="btnRifai">↺ Rifai da capo</button>
+        <button class="btn btn-giallo" id="btnSalva">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12m0 0-5-5m5 5 5-5M5 21h14"/></svg>
+          Salva il podcast
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- 5. Salvato -->
+  <section class="screen" id="sSalvato">
+    <div class="ok-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#061a3a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg></div>
+    <h2 class="titolo">Podcast <em>salvato!</em></h2>
+    <p class="sotto" id="txtGrazie">Grazie ragazzi, siete stati bravissimi!</p>
+    <div class="file-nome" id="txtFile"></div>
+    <div class="ritorno">Lo studio si prepara per il prossimo gruppo tra <b id="txtRitorno">10</b> secondi…</div>
+    <div style="margin-top:22px"><button class="btn btn-blu btn-piccolo" id="btnNuovo">Nuova registrazione</button></div>
+  </section>
+</main>
+
+<!-- Overlay password -->
+<div class="overlay" id="ovPassword">
+  <div class="modal" id="modalPassword">
+    <h3>🔒 Area riservata</h3>
+    <p id="pwdMessaggio">Inserisci la password dell'animatore per continuare.</p>
+    <input type="password" class="campo" id="inPassword" placeholder="Password" autocomplete="off" style="text-align:center">
+    <div class="errore" id="errPassword"></div>
+    <div class="azioni">
+      <button class="btn btn-vetro btn-piccolo" id="btnPwdAnnulla">Annulla</button>
+      <button class="btn btn-giallo btn-piccolo" id="btnPwdOk">Conferma</button>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay uscita dal fullscreen -->
+<div class="overlay" id="ovFullscreen">
+  <div class="modal">
+    <h3>Lo studio è uscito dallo schermo intero</h3>
+    <p>Premi il pulsante per tornare allo studio. Solo l'animatore può uscire con la password.</p>
+    <div class="azioni">
+      <button class="btn btn-giallo" id="btnTornaFs">Torna allo studio</button>
+    </div>
+    <div class="azioni"><button class="btn btn-vetro btn-piccolo" id="btnFsAdmin">🔒 Sono l'animatore</button></div>
+  </div>
+</div>
+
+<!-- Overlay conferma -->
+<div class="overlay" id="ovConferma">
+  <div class="modal">
+    <h3 id="confTitolo">Sei sicuro?</h3>
+    <p id="confTesto"></p>
+    <div class="azioni">
+      <button class="btn btn-vetro btn-piccolo" id="btnConfNo">No, torna indietro</button>
+      <button class="btn btn-rosso btn-piccolo" id="btnConfSi">Sì</button>
+    </div>
+  </div>
+</div>
+
+<!-- Pannello animatore -->
+<div class="overlay" id="ovAdmin">
+  <div class="modal largo">
+    <h3>⚙️ Pannello animatore</h3>
+    <p>Da qui puoi modificare le impostazioni dello studio o chiudere l'applicazione.</p>
+    <div class="impostazioni">
+      <div><label>Titolo in alto</label><input class="campo" id="setTitolo"></div>
+      <div><label>Sottotitolo</label><input class="campo" id="setSottotitolo"></div>
+      <div><label>Durata massima (minuti)</label><input class="campo" type="number" min="1" max="60" id="setDurata"></div>
+      <div><label>Formato file</label>
+        <select class="campo" id="setFormato">
+          <option value="wav">WAV (si apre ovunque, consigliato)</option>
+          <option value="orig">Originale compresso (file più piccolo)</option>
+        </select>
+      </div>
+      <div class="full"><label>Microfono</label><select class="campo" id="setMic"></select></div>
+      <div><label>Nuova password <small style="font-weight:400">(lascia vuoto per non cambiarla)</small></label><input class="campo" type="password" id="setPassword" autocomplete="new-password"></div>
+      <div><label>Riduzione rumore di fondo</label>
+        <select class="campo" id="setRumore"><option value="1">Attiva (consigliato in mostra)</option><option value="0">Disattiva</option></select>
+      </div>
+    </div>
+    <div class="sezione-titolo">📋 Registro dei podcast salvati (<span id="numStorico">0</span>)</div>
+    <div class="storico" id="storico"></div>
+    <div class="azioni" style="justify-content:flex-start">
+      <button class="btn btn-vetro btn-piccolo" id="btnEsportaCsv">Scarica registro (CSV)</button>
+      <button class="btn btn-vetro btn-piccolo" id="btnSvuotaStorico">Svuota registro</button>
+    </div>
+    <div class="azioni" style="justify-content:space-between;margin-top:28px">
+      <button class="btn btn-rosso btn-piccolo" id="btnEsci">Esci dallo schermo intero</button>
+      <button class="btn btn-giallo btn-piccolo" id="btnSalvaImp">Salva e torna allo studio</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+(() => {
+  "use strict";
+
+  /* ======================= Impostazioni ======================= */
+  const DEFAULT = {
+    password: "azione2026",
+    titolo: "Studio Podcast",
+    sottotitolo: "Azione Cattolica",
+    durataMin: 5,
+    formato: "wav",
+    micId: "",
+    rumore: "1"
+  };
+  const store = {
+    get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+    set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
+  };
+  let cfg = Object.assign({}, DEFAULT, store.get("podcast_cfg", {}));
+  let storico = store.get("podcast_storico", []);
+
+  const $ = id => document.getElementById(id);
+  const fmt = s => { s = Math.max(0, Math.floor(s)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+
+  function applicaCfg() {
+    $("txtTitolo").textContent = cfg.titolo;
+    $("txtSottotitolo").textContent = cfg.sottotitolo;
+    document.title = cfg.titolo;
+    $("txtMaxDurata").textContent = cfg.durataMin + (cfg.durataMin == 1 ? " minuto" : " minuti");
+    $("timerMax").textContent = "Tempo massimo " + fmt(cfg.durataMin * 60);
+    aggiornaContaOggi();
+  }
+  function oggiStr() { const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth()+1).padStart(2,"0") + "-" + String(d.getDate()).padStart(2,"0"); }
+  function aggiornaContaOggi() { $("contaOggi").textContent = storico.filter(r => r.data.startsWith(oggiStr())).length; }
+
+  /* ======================= Schermate ======================= */
+  let schermata = "sAvvio";
+  function vai(id) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.toggle("active", s.id === id));
+    schermata = id;
+  }
+  function toast(msg, ms = 3000) {
+    const t = $("toast"); t.textContent = msg; t.classList.add("show");
+    clearTimeout(toast._t); toast._t = setTimeout(() => t.classList.remove("show"), ms);
+  }
+
+  /* ======================= Fullscreen + blocco ======================= */
+  let sbloccato = false;     // true quando l'animatore ha inserito la password per uscire
+  const inFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  async function entraFullscreen() {
+    const el = document.documentElement;
+    try {
+      if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: "hide" });
+      else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
+    } catch (e) { /* alcuni browser non lo consentono */ }
+    try { if (navigator.keyboard && navigator.keyboard.lock) await navigator.keyboard.lock(["Escape"]); } catch {}
+    richiediWakeLock();
+  }
+  function esciFullscreen() {
+    try { if (navigator.keyboard && navigator.keyboard.unlock) navigator.keyboard.unlock(); } catch {}
+    if (document.exitFullscreen) document.exitFullscreen().catch(() => {});
+    else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+  }
+  function onFsChange() {
+    if (!inFullscreen() && !sbloccato && schermata !== "sAvvio") {
+      $("ovFullscreen").classList.add("show");
+    } else {
+      $("ovFullscreen").classList.remove("show");
+    }
+  }
+  document.addEventListener("fullscreenchange", onFsChange);
+  document.addEventListener("webkitfullscreenchange", onFsChange);
+  $("btnTornaFs").onclick = async () => { await entraFullscreen(); onFsChange(); };
+  $("btnFsAdmin").onclick = () => chiediPassword(apriAdmin);
+
+  // Blocca tasto destro, scorciatoie comuni e chiusura accidentale
+  document.addEventListener("contextmenu", e => e.preventDefault());
+  document.addEventListener("keydown", e => {
+    const k = e.key;
+    if (k === "F5" || k === "F11" || (e.ctrlKey && ["r","R","p","P","s","S","u","U"].includes(k)) || (e.altKey && k === "ArrowLeft")) {
+      e.preventDefault();
+    }
+    if (k === "Enter" && $("ovPassword").classList.contains("show")) { e.preventDefault(); $("btnPwdOk").click(); }
+  });
+  window.addEventListener("beforeunload", e => {
+    if (!sbloccato) { e.preventDefault(); e.returnValue = ""; }
+  });
+
+  // Schermo sempre acceso
+  let wakeLock = null;
+  async function richiediWakeLock() {
+    try { if ("wakeLock" in navigator && !wakeLock) { wakeLock = await navigator.wakeLock.request("screen"); wakeLock.addEventListener("release", () => wakeLock = null); } } catch {}
+  }
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") richiediWakeLock(); });
+
+  /* ======================= Password ======================= */
+  let pwdCallback = null;
+  function chiediPassword(cb, msg) {
+    pwdCallback = cb;
+    $("pwdMessaggio").textContent = msg || "Inserisci la password dell'animatore per continuare.";
+    $("inPassword").value = ""; $("errPassword").textContent = "";
+    $("ovPassword").classList.add("show");
+    setTimeout(() => $("inPassword").focus(), 50);
+  }
+  $("btnPwdAnnulla").onclick = () => { $("ovPassword").classList.remove("show"); pwdCallback = null; };
+  $("btnPwdOk").onclick = () => {
+    if ($("inPassword").value === cfg.password) {
+      $("ovPassword").classList.remove("show");
+      const cb = pwdCallback; pwdCallback = null; cb && cb();
+    } else {
+      $("errPassword").textContent = "Password errata";
+      const m = $("modalPassword"); m.classList.remove("shake"); void m.offsetWidth; m.classList.add("shake");
+      $("inPassword").select();
+    }
+  };
+  $("btnLucchetto").onclick = () => chiediPassword(apriAdmin);
+
+  /* ======================= Conferma ======================= */
+  function conferma(titolo, testo, siTxt, cb) {
+    $("confTitolo").textContent = titolo; $("confTesto").textContent = testo; $("btnConfSi").textContent = siTxt;
+    $("ovConferma").classList.add("show");
+    $("btnConfSi").onclick = () => { $("ovConferma").classList.remove("show"); cb(); };
+  }
+  $("btnConfNo").onclick = () => $("ovConferma").classList.remove("show");
+
+  /* ======================= Audio / microfono ======================= */
+  let audioCtx = null, stream = null, analyser = null, sorgente = null;
+  const datiFreq = new Uint8Array(1024);
+  const datiOnda = new Uint8Array(2048);
+
+  async function apriMicrofono() {
+    if (stream) stream.getTracks().forEach(t => t.stop());
+    const rumore = cfg.rumore === "1";
+    const vincoli = {
+      audio: {
+        deviceId: cfg.micId ? { exact: cfg.micId } : undefined,
+        echoCancellation: rumore, noiseSuppression: rumore, autoGainControl: true,
+        channelCount: 1
+      }
+    };
+    try {
+      stream = await navigator.mediaDevices.getUserMedia(vincoli);
+    } catch (e) {
+      if (cfg.micId) { cfg.micId = ""; vincoli.audio.deviceId = undefined; stream = await navigator.mediaDevices.getUserMedia(vincoli); }
+      else throw e;
+    }
+    if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    if (audioCtx.state === "suspended") await audioCtx.resume();
+    if (sorgente) sorgente.disconnect();
+    sorgente = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    analyser.smoothingTimeConstant = 0.6;
+    sorgente.connect(analyser);
+    // se il microfono viene scollegato
+    stream.getAudioTracks()[0].addEventListener("ended", () => toast("⚠️ Il microfono è stato scollegato! Avvisa l'animatore.", 6000));
+  }
+
+  function livello() {
+    if (!analyser) return 0;
+    analyser.getByteTimeDomainData(datiOnda);
+    let somma = 0;
+    for (let i = 0; i < datiOnda.length; i++) { const v = (datiOnda[i] - 128) / 128; somma += v * v; }
+    return Math.min(1, Math.sqrt(somma / datiOnda.length) * 4);
+  }
+
+  // Misuratore a barre nella schermata "pronti"
+  const meter = $("meterPronti");
+  for (let i = 0; i < 16; i++) meter.appendChild(document.createElement("i"));
+  const barreMeter = [...meter.children];
+  function disegnaMeter(l) {
+    const accese = Math.round(l * barreMeter.length);
+    barreMeter.forEach((b, i) => {
+      b.style.height = (30 + (i / barreMeter.length) * 70) + "%";
+      b.style.background = i < accese ? (i > 12 ? "#ff4d5e" : i > 9 ? "#ffc72c" : "#2ecc71") : "rgba(255,255,255,0.2)";
+    });
+  }
+
+  // Onde animate durante la registrazione
+  const canvas = $("onde"), c2d = canvas.getContext("2d");
+  const storiaLivelli = new Array(110).fill(0);
+  let ultimoCampione = 0;
+  function disegnaOnde(attivo) {
+    const W = canvas.width, H = canvas.height;
+    c2d.clearRect(0, 0, W, H);
+    const now = performance.now();
+    if (now - ultimoCampione > 45) {
+      storiaLivelli.push(attivo ? livello() : 0); storiaLivelli.shift(); ultimoCampione = now;
+    }
+    const n = storiaLivelli.length, passo = W / n, largh = passo * 0.55;
+    for (let i = 0; i < n; i++) {
+      const v = storiaLivelli[i];
+      const h = Math.max(8, v * H * 0.95);
+      const x = i * passo + (passo - largh) / 2, y = (H - h) / 2;
+      const alpha = 0.25 + 0.75 * (i / n);
+      c2d.fillStyle = attivo ? `rgba(255,199,44,${alpha})` : `rgba(255,255,255,${alpha * 0.4})`;
+      const r = largh / 2;
+      c2d.beginPath();
+      c2d.moveTo(x + r, y); c2d.lineTo(x + largh - r, y); c2d.arcTo(x + largh, y, x + largh, y + r, r);
+      c2d.lineTo(x + largh, y + h - r); c2d.arcTo(x + largh, y + h, x + largh - r, y + h, r);
+      c2d.lineTo(x + r, y + h); c2d.arcTo(x, y + h, x, y + h - r, r);
+      c2d.lineTo(x, y + r); c2d.arcTo(x, y, x + r, y, r);
+      c2d.fill();
+    }
+  }
+
+  function loop() {
+    if (schermata === "sPronti") disegnaMeter(livello());
+    if (schermata === "sRec") disegnaOnde(recorder && recorder.state === "recording");
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(loop);
+
+  /* ======================= Registrazione ======================= */
+  let recorder = null, pezzi = [], mimeUsato = "", blobFinale = null;
+  let tempoAccumulato = 0, inizioSegmento = 0, timerInt = null, avvisoDato = false;
+
+  function scegliMime() {
+    const opzioni = ["audio/webm;codecs=opus", "audio/webm", "audio/ogg;codecs=opus", "audio/mp4", "audio/aac"];
+    for (const m of opzioni) if (window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(m)) return m;
+    return "";
+  }
+  const durataCorrente = () => tempoAccumulato + (recorder && recorder.state === "recording" ? (performance.now() - inizioSegmento) / 1000 : 0);
+
+  function bip(freq = 880, dur = 0.12) {
+    try {
+      const o = audioCtx.createOscillator(), g = audioCtx.createGain();
+      o.frequency.value = freq; o.type = "sine";
+      g.gain.setValueAtTime(0.0001, audioCtx.currentTime);
+      g.gain.exponentialRampToValueAtTime(0.25, audioCtx.currentTime + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+      o.connect(g).connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime + dur + 0.02);
+    } catch {}
+  }
+
+  async function avviaCountdown() {
+    $("btnRec").disabled = true;
+    try {
+      if (!stream || !stream.active) await apriMicrofono();
+    } catch (e) {
+      $("btnRec").disabled = false;
+      toast("⚠️ Microfono non disponibile. Chiama l'animatore.", 5000);
+      return;
+    }
+    vai("sCountdown");
+    const num = $("numCountdown");
+    for (let i = 3; i >= 1; i--) {
+      num.textContent = i; num.classList.remove("pop"); void num.offsetWidth; num.classList.add("pop");
+      bip(660, 0.12);
+      await new Promise(r => setTimeout(r, 1000));
+    }
+    bip(990, 0.25);
+    await new Promise(r => setTimeout(r, 250)); // il bip non finisce nella registrazione
+    iniziaRegistrazione();
+    $("btnRec").disabled = false;
+  }
+
+  function iniziaRegistrazione() {
+    pezzi = []; blobFinale = null; tempoAccumulato = 0; avvisoDato = false;
+    storiaLivelli.fill(0);
+    mimeUsato = scegliMime();
+    try {
+      recorder = mimeUsato ? new MediaRecorder(stream, { mimeType: mimeUsato, audioBitsPerSecond: 128000 }) : new MediaRecorder(stream);
+    } catch (e) {
+      recorder = new MediaRecorder(stream);
+    }
+    mimeUsato = recorder.mimeType || mimeUsato || "audio/webm";
+    recorder.ondataavailable = e => { if (e.data && e.data.size) pezzi.push(e.data); };
+    recorder.onstop = () => {
+      blobFinale = new Blob(pezzi, { type: mimeUsato });
+      preparaRevisione();
+    };
+    recorder.start(1000);
+    inizioSegmento = performance.now();
+    aggiornaUiRec();
+    vai("sRec");
+    clearInterval(timerInt);
+    timerInt = setInterval(tick, 200);
+    tick();
+  }
+
+  function tick() {
+    const d = durataCorrente(), max = cfg.durataMin * 60;
+    $("timer").textContent = fmt(d);
+    $("barraTempo").style.width = Math.min(100, d / max * 100) + "%";
+    const resta = max - d;
+    const tm = $("timerMax");
+    if (resta <= 30) {
+      tm.classList.add("warn"); tm.textContent = "⏳ Mancano " + Math.ceil(resta) + " secondi!";
+      if (!avvisoDato) { avvisoDato = true; toast("⏳ Ultimi 30 secondi: iniziate a salutare!"); }
+    } else {
+      tm.classList.remove("warn"); tm.textContent = "Tempo massimo " + fmt(max);
+    }
+    if (d >= max && recorder && recorder.state !== "inactive") {
+      toast("⏱️ Tempo scaduto! La registrazione è stata fermata.", 4000);
+      fermaRegistrazione();
+    }
+  }
+
+  function aggiornaUiRec() {
+    const inPausa = recorder && recorder.state === "paused";
+    $("statoRec").classList.toggle("pausa", inPausa);
+    $("statoRecTxt").textContent = inPausa ? "IN PAUSA" : "IN ONDA";
+    $("btnPausa").querySelector("span").textContent = inPausa ? "Riprendi" : "Pausa";
+    $("btnPausa").querySelector("svg").innerHTML = inPausa
+      ? '<path d="M8 5v14l11-7z"/>'
+      : '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
+    $("btnPausa").className = "btn " + (inPausa ? "btn-blu" : "btn-giallo");
+  }
+
+  function pausaRiprendi() {
+    if (!recorder) return;
+    if (recorder.state === "recording") {
+      recorder.pause();
+      tempoAccumulato += (performance.now() - inizioSegmento) / 1000;
+    } else if (recorder.state === "paused") {
+      recorder.resume();
+      inizioSegmento = performance.now();
+    }
+    aggiornaUiRec(); tick();
+  }
+
+  function fermaRegistrazione() {
+    if (!recorder || recorder.state === "inactive") return;
+    if (recorder.state === "recording") tempoAccumulato += (performance.now() - inizioSegmento) / 1000;
+    clearInterval(timerInt);
+    recorder.stop();
+  }
+
+  $("btnRec").onclick = avviaCountdown;
+  $("btnPausa").onclick = pausaRiprendi;
+  $("btnStop").onclick = () => {
+    if (durataCorrente() < 3) {
+      conferma("Registrazione molto corta", "Avete registrato meno di 3 secondi. Volete davvero fermarvi?", "Sì, ho finito", fermaRegistrazione);
+    } else fermaRegistrazione();
+  };
+
+  /* ======================= Revisione ======================= */
+  const audio = new Audio();
+  let urlAnteprima = null;
+
+  function preparaRevisione() {
+    if (urlAnteprima) URL.revokeObjectURL(urlAnteprima);
+    urlAnteprima = URL.createObjectURL(blobFinale);
+    audio.src = urlAnteprima;
+    $("playProg").style.width = "0";
+    $("playTime").textContent = "00:00 / " + fmt(tempoAccumulato);
+    $("inTitolo").value = "";
+    $("listaNomi").innerHTML = ""; aggiungiNome(); aggiungiNome();
+    $("errNomi").textContent = "";
+    vai("sRevisione");
+  }
+
+  function aggiungiNome(valore = "") {
+    const lista = $("listaNomi");
+    if (lista.children.length >= 12) { toast("Massimo 12 nomi"); return; }
+    const riga = document.createElement("div"); riga.className = "nome-riga";
+    const n = lista.children.length + 1;
+    riga.innerHTML = `<input class="campo" maxlength="30" placeholder="Nome ${n}" autocomplete="off"><button title="Rimuovi">×</button>`;
+    riga.querySelector("input").value = valore;
+    riga.querySelector("input").addEventListener("input", () => $("errNomi").textContent = "");
+    riga.querySelector("button").onclick = () => { if (lista.children.length > 1) riga.remove(); else riga.querySelector("input").value = ""; };
+    lista.appendChild(riga);
+    return riga.querySelector("input");
+  }
+  $("btnAggiungiNome").onclick = () => { const i = aggiungiNome(); i && i.focus(); };
+
+  $("btnPlay").onclick = () => { if (audio.paused) audio.play(); else audio.pause(); };
+  audio.addEventListener("play", () => $("icoPlay").innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>');
+  audio.addEventListener("pause", () => $("icoPlay").innerHTML = '<path d="M8 5v14l11-7z"/>');
+  audio.addEventListener("ended", () => { $("icoPlay").innerHTML = '<path d="M8 5v14l11-7z"/>'; });
+  audio.addEventListener("timeupdate", () => {
+    const tot = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : tempoAccumulato;
+    $("playProg").style.width = Math.min(100, audio.currentTime / tot * 100) + "%";
+    $("playTime").textContent = fmt(audio.currentTime) + " / " + fmt(tot);
+  });
+  $("playBar").onclick = e => {
+    const r = e.currentTarget.getBoundingClientRect();
+    const tot = isFinite(audio.duration) && audio.duration > 0 ? audio.duration : tempoAccumulato;
+    audio.currentTime = Math.max(0, Math.min(1, (e.clientX - r.left) / r.width)) * tot;
+  };
+
+  $("btnRifai").onclick = () => conferma("Rifare da capo?", "La registrazione attuale verrà cancellata e non potrà essere recuperata.", "Sì, cancella e rifai", () => {
+    audio.pause(); blobFinale = null; vai("sPronti");
+  });
+
+  /* ======================= Salvataggio ======================= */
+  function pulisci(s) {
+    return s.normalize("NFD").replace(/[̀-ͯ]/g, "")
+      .replace(/[^a-zA-Z0-9 _-]/g, "").trim().replace(/\s+/g, "-").slice(0, 40);
+  }
+
+  // Converte la registrazione in WAV (16 bit, mono) normalizzando il volume
+  async function inWav(blob) {
+    const buf = await blob.arrayBuffer();
+    const ctx = audioCtx || new (window.AudioContext || window.webkitAudioContext)();
+    const ab = await new Promise((ok, ko) => {
+      const p = ctx.decodeAudioData(buf, ok, ko); if (p && p.then) p.then(ok, ko);
+    });
+    const len = ab.length, sr = ab.sampleRate, ch = ab.numberOfChannels;
+    const mono = new Float32Array(len);
+    for (let c = 0; c < ch; c++) { const d = ab.getChannelData(c); for (let i = 0; i < len; i++) mono[i] += d[i] / ch; }
+    let picco = 0; for (let i = 0; i < len; i++) { const a = Math.abs(mono[i]); if (a > picco) picco = a; }
+    const guadagno = picco > 0.01 ? Math.min(4, 0.89 / picco) : 1; // ~ -1 dB, max +12 dB
+    const out = new DataView(new ArrayBuffer(44 + len * 2));
+    const scrivi = (o, s) => { for (let i = 0; i < s.length; i++) out.setUint8(o + i, s.charCodeAt(i)); };
+    scrivi(0, "RIFF"); out.setUint32(4, 36 + len * 2, true); scrivi(8, "WAVE");
+    scrivi(12, "fmt "); out.setUint32(16, 16, true); out.setUint16(20, 1, true); out.setUint16(22, 1, true);
+    out.setUint32(24, sr, true); out.setUint32(28, sr * 2, true); out.setUint16(32, 2, true); out.setUint16(34, 16, true);
+    scrivi(36, "data"); out.setUint32(40, len * 2, true);
+    for (let i = 0, o = 44; i < len; i++, o += 2) {
+      const s = Math.max(-1, Math.min(1, mono[i] * guadagno));
+      out.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true);
+    }
+    return new Blob([out], { type: "audio/wav" });
+  }
+
+  function scarica(blob, nome) {
+    const a = document.createElement("a");
+    const url = URL.createObjectURL(blob);
+    a.href = url; a.download = nome; a.style.display = "none";
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { a.remove(); URL.revokeObjectURL(url); }, 4000);
+  }
+
+  $("btnSalva").onclick = async () => {
+    const nomi = [...$("listaNomi").querySelectorAll("input")].map(i => i.value.trim()).filter(Boolean);
+    if (!nomi.length) {
+      $("errNomi").textContent = "✋ Scrivete almeno un nome prima di salvare!";
+      const primo = $("listaNomi").querySelector("input"); primo && primo.focus();
+      return;
+    }
+    if (!blobFinale) return;
+    const btn = $("btnSalva"); btn.disabled = true; const testoBtn = btn.innerHTML; btn.innerHTML = "Salvataggio in corso…";
+    audio.pause();
+    const d = new Date();
+    const stamp = oggiStr() + "_" + String(d.getHours()).padStart(2,"0") + "-" + String(d.getMinutes()).padStart(2,"0") + "-" + String(d.getSeconds()).padStart(2,"0");
+    const titolo = $("inTitolo").value.trim();
+    const parteNomi = nomi.map(pulisci).filter(Boolean).join("_").slice(0, 120) || "gruppo";
+    const parteTitolo = titolo ? "_" + pulisci(titolo) : "";
+    let blob = blobFinale, est = estensioneDa(mimeUsato);
+    if (cfg.formato === "wav") {
+      try { blob = await inWav(blobFinale); est = "wav"; }
+      catch (e) { console.warn("Conversione WAV non riuscita, salvo l'originale", e); }
+    }
+    const nomeFile = `Podcast_${stamp}${parteTitolo}_${parteNomi}.${est}`;
+    scarica(blob, nomeFile);
+    storico.unshift({ data: d.toISOString().slice(0,10) === oggiStr() ? oggiStr() + " " + d.toTimeString().slice(0,8) : d.toISOString(), nomi: nomi.join(", "), titolo, durata: fmt(tempoAccumulato), file: nomeFile });
+    storico = storico.slice(0, 500);
+    store.set("podcast_storico", storico);
+    aggiornaContaOggi();
+    btn.disabled = false; btn.innerHTML = testoBtn;
+    mostraSalvato(nomi, nomeFile);
+  };
+  function estensioneDa(m) { return m.includes("mp4") || m.includes("aac") ? "m4a" : m.includes("ogg") ? "ogg" : "webm"; }
+
+  let ritornoInt = null;
+  function mostraSalvato(nomi, file) {
+    $("txtGrazie").textContent = "Grazie " + (nomi.length > 1 ? nomi.slice(0, -1).join(", ") + " e " + nomi[nomi.length - 1] : nomi[0]) + ", siete stati bravissimi!";
+    if (nomi.length === 1) $("txtGrazie").textContent = "Grazie " + nomi[0] + ", sei stato/a bravissimo/a!";
+    $("txtFile").textContent = "📁 Download › " + file;
+    vai("sSalvato");
+    coriandoli();
+    let s = 10; $("txtRitorno").textContent = s;
+    clearInterval(ritornoInt);
+    ritornoInt = setInterval(() => { s--; $("txtRitorno").textContent = s; if (s <= 0) nuovaSessione(); }, 1000);
+  }
+  function nuovaSessione() {
+    clearInterval(ritornoInt);
+    blobFinale = null; pezzi = [];
+    if (urlAnteprima) { URL.revokeObjectURL(urlAnteprima); urlAnteprima = null; audio.removeAttribute("src"); }
+    vai("sPronti");
+  }
+  $("btnNuovo").onclick = nuovaSessione;
+
+  function coriandoli() {
+    const colori = ["#ffc72c", "#ffffff", "#1e63d6", "#ffe08a", "#5aa2ff"];
+    for (let i = 0; i < 90; i++) {
+      const c = document.createElement("div"); c.className = "confetto";
+      c.style.left = Math.random() * 100 + "vw";
+      c.style.background = colori[i % colori.length];
+      c.style.animationDuration = (2.5 + Math.random() * 2.5) + "s";
+      c.style.animationDelay = (Math.random() * 0.8) + "s";
+      c.style.borderRadius = Math.random() > 0.5 ? "50%" : "2px";
+      document.body.appendChild(c);
+      setTimeout(() => c.remove(), 6000);
+    }
+  }
+
+  /* ======================= Pannello animatore ======================= */
+  async function apriAdmin() {
+    sbloccato = true; // durante il pannello l'uscita dal fullscreen non fa scattare l'avviso
+    $("ovFullscreen").classList.remove("show");
+    $("setTitolo").value = cfg.titolo; $("setSottotitolo").value = cfg.sottotitolo;
+    $("setDurata").value = cfg.durataMin; $("setFormato").value = cfg.formato; $("setRumore").value = cfg.rumore;
+    $("setPassword").value = "";
+    const sel = $("setMic"); sel.innerHTML = '<option value="">Predefinito di sistema</option>';
+    try {
+      const dev = (await navigator.mediaDevices.enumerateDevices()).filter(d => d.kind === "audioinput");
+      dev.forEach((d, i) => { const o = document.createElement("option"); o.value = d.deviceId; o.textContent = d.label || ("Microfono " + (i + 1)); sel.appendChild(o); });
+      sel.value = cfg.micId || "";
+    } catch {}
+    disegnaStorico();
+    $("ovAdmin").classList.add("show");
+  }
+  function disegnaStorico() {
+    $("numStorico").textContent = storico.length;
+    const box = $("storico"); box.innerHTML = "";
+    if (!storico.length) { box.innerHTML = "<div>Nessun podcast salvato finora.</div>"; return; }
+    storico.forEach(r => {
+      const riga = document.createElement("div");
+      const sx = document.createElement("span"); sx.textContent = r.data + " — " + r.nomi + (r.titolo ? " («" + r.titolo + "»)" : "");
+      const dx = document.createElement("span"); dx.textContent = r.durata; dx.style.color = "var(--giallo)";
+      riga.append(sx, dx); box.appendChild(riga);
+    });
+  }
+  $("btnSalvaImp").onclick = async () => {
+    const micPrima = cfg.micId, rumorePrima = cfg.rumore;
+    cfg.titolo = $("setTitolo").value.trim() || DEFAULT.titolo;
+    cfg.sottotitolo = $("setSottotitolo").value.trim();
+    cfg.durataMin = Math.max(1, Math.min(60, parseInt($("setDurata").value, 10) || DEFAULT.durataMin));
+    cfg.formato = $("setFormato").value; cfg.micId = $("setMic").value; cfg.rumore = $("setRumore").value;
+    const np = $("setPassword").value;
+    if (np) { cfg.password = np; toast("🔑 Password aggiornata"); }
+    store.set("podcast_cfg", cfg);
+    applicaCfg();
+    $("ovAdmin").classList.remove("show");
+    sbloccato = false;
+    await entraFullscreen();
+    const registrando = recorder && recorder.state !== "inactive";
+    if ((micPrima !== cfg.micId || rumorePrima !== cfg.rumore) && !registrando) {
+      try { await apriMicrofono(); } catch { toast("⚠️ Impossibile usare il microfono scelto"); }
+    }
+    onFsChange();
+  };
+  $("btnEsci").onclick = () => {
+    $("ovAdmin").classList.remove("show");
+    sbloccato = true;
+    esciFullscreen();
+    toast("Schermo intero disattivato: ora puoi chiudere la scheda. Per tornare allo studio usa il lucchetto.", 6000);
+  };
+  $("btnEsportaCsv").onclick = () => {
+    const esc = v => '"' + String(v ?? "").replace(/"/g, '""') + '"';
+    const righe = [["Data e ora", "Componenti", "Titolo", "Durata", "File"].map(esc).join(";")]
+      .concat(storico.map(r => [r.data, r.nomi, r.titolo, r.durata, r.file].map(esc).join(";")));
+    scarica(new Blob(["﻿" + righe.join("\r\n")], { type: "text/csv" }), "Registro_podcast_" + oggiStr() + ".csv");
+  };
+  $("btnSvuotaStorico").onclick = () => {
+    $("ovAdmin").classList.remove("show");
+    conferma("Svuotare il registro?", "Verrà cancellato solo l'elenco qui sotto, i file audio già salvati restano nella cartella Download.", "Sì, svuota", () => {
+      storico = []; store.set("podcast_storico", storico); aggiornaContaOggi(); apriAdmin();
+    });
+    $("btnConfNo").addEventListener("click", () => $("ovAdmin").classList.add("show"), { once: true });
+  };
+
+  /* ======================= Avvio ======================= */
+  async function avvia() {
+    $("avvioErrore").textContent = "";
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || !window.MediaRecorder) {
+      $("avvioErrore").textContent = "Questo browser non supporta la registrazione audio. Usa Google Chrome o Microsoft Edge aggiornati.";
+      return;
+    }
+    await entraFullscreen();
+    try {
+      await apriMicrofono();
+    } catch (e) {
+      $("avvioErrore").textContent = "Non riesco ad accedere al microfono. Controlla che sia collegato e consenti l'accesso quando il browser lo chiede.";
+      return;
+    }
+    vai("sPronti");
+    onFsChange();
+  }
+  $("btnAvvia").onclick = e => { e.stopPropagation(); avvia(); };
+  $("startCard").onclick = avvia;
+
+  applicaCfg();
+})();
+</script>
+</body>
+</html>
