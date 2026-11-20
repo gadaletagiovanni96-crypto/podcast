@@ -62,7 +62,7 @@ class Gestore(SimpleHTTPRequestHandler):
                 eta = int(min(99999, time.time() - stato["tv_t"]))
                 return self._json({"eta": eta, "tv": stato["tv"]})
             if u.path == "/api/info":
-                return self._json({"ip": IP, "porta": PORTA})
+                return self._json({"ip": IP, "tutti": [IP], "porta": PORTA})
         return super().do_GET()
 
     def do_POST(self):
@@ -86,6 +86,7 @@ if __name__ == "__main__":
     print(f"   Sul PC della TV apri:   http://localhost:{PORTA}/tv.html")
     print(f"   Sul telefono apri:      http://{IP}:{PORTA}/telecomando.html\n")
     print("   Il telefono deve essere sulla STESSA rete Wi-Fi del PC.")
+    print("   Scrivi l'indirizzo con http:// all'inizio (non https).")
     print("   NON chiudere questa finestra finché la mostra è aperta.\n")
     webbrowser.open(f"http://localhost:{PORTA}/tv.html")
     try:

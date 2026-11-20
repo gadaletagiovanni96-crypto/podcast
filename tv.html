@@ -706,7 +706,9 @@
     }
     try {
       const j = await (await fetch("/api/info", { cache: "no-store" })).json();
-      box.innerHTML = "✔ Attivo. Sul telefono (stessa rete Wi-Fi) apri:<br><b>http://" + j.ip + ":" + j.porta + "/telecomando.html</b>";
+      const altri = (j.tutti || []).filter(x => x !== j.ip);
+      box.innerHTML = "✔ Attivo. Sul telefono (stessa rete Wi-Fi) apri:<br><b>http://" + j.ip + ":" + j.porta + "/telecomando.html</b>"
+        + (altri.length ? "<br><small>Se non si apre prova: " + altri.map(x => "http://" + x + ":" + j.porta + "/telecomando.html").join(" · ") + "</small>" : "");
     } catch { box.textContent = "Server non raggiungibile."; }
   }
   if (CON_SERVER) {

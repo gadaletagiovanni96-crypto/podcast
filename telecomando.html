@@ -120,7 +120,9 @@
   "use strict";
   const $ = id => document.getElementById(id);
   const fmt = s => { s = Math.max(0, Math.floor(s || 0)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
-  let tv = null, collegato = false;
+  let tv = null, collegato = false, serverOk = false, eta = 99999;
+  // il telecomando funziona solo se aperto dall'indirizzo del programma ponte
+  const DAL_SERVER = location.protocol === "http:" && !/github\.io$/.test(location.hostname);
 
   function lampeggia() { const l = $("led"); l.classList.add("on"); setTimeout(() => l.classList.remove("on"), 180); try { navigator.vibrate && navigator.vibrate(30); } catch {} }
 
@@ -138,6 +140,9 @@
     conn.classList.toggle("ok", collegato); conn.classList.toggle("ko", !collegato);
     $("connTxt").textContent = collegato ? "TV collegata" : "TV non trovata";
     $("avviso").classList.toggle("show", !collegato);
+    if (!DAL_SERVER) $("avviso").innerHTML = "Questa pagina va aperta dall'indirizzo scritto nella <b>finestra nera</b> sul PC (inizia con <b>http://</b> e finisce con <b>:8080/telecomando.html</b>).";
+    else if (!serverOk) $("avviso").innerHTML = "Il PC non risponde.<br>Controlla che la finestra nera sia ancora aperta e che il telefono sia sulla stessa rete Wi-Fi.";
+    else if (!collegato) $("avviso").innerHTML = "Il PC risponde, ma la TV non è collegata.<br>Sul PC la TV va aperta da <b>http://localhost:8080/tv.html</b> (si apre da sola avviando il programma).";
     $("btnPlay").disabled = $("btnInizio").disabled = !collegato || !tv || !tv.video;
     if (!collegato || !tv) { $("stato").textContent = "SEGNALE ASSENTE"; $("titolo").innerHTML = "&nbsp;"; return; }
     if (!tv.video) $("stato").textContent = "NESSUN VIDEO";
@@ -155,9 +160,10 @@
     try {
       const r = await fetch("/api/stato", { cache: "no-store" });
       const j = await r.json();
+      eta = j.eta; serverOk = true;
       collegato = j.eta < 5 && !!j.tv;
       tv = j.tv;
-    } catch { collegato = false; }
+    } catch { collegato = false; serverOk = false; }
     disegna();
   }
   setInterval(aggiornaStato, 800);

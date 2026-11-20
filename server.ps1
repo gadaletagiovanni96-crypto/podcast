@@ -15,10 +15,18 @@ catch {
   exit 1
 }
 
-$ip = ([System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) |
-  Where-Object { $_.AddressFamily -eq 'InterNetwork' -and $_.ToString() -notlike '127.*' -and $_.ToString() -notlike '169.254.*' } |
-  Select-Object -First 1)
-if ($ip) { $ip = $ip.ToString() } else { $ip = "localhost" }
+# Indirizzi del PC: prima quelli della scheda di rete "vera" (con gateway), poi gli altri
+$conGateway = @()
+try {
+  $conGateway = @(Get-NetIPConfiguration -ErrorAction Stop |
+    Where-Object { $_.IPv4DefaultGateway -and $_.NetAdapter.Status -eq 'Up' } |
+    ForEach-Object { $_.IPv4Address } | ForEach-Object { $_.IPAddress })
+} catch {}
+$altri = @([System.Net.Dns]::GetHostAddresses([System.Net.Dns]::GetHostName()) |
+  Where-Object { $_.AddressFamily -eq 'InterNetwork' } | ForEach-Object { $_.ToString() })
+$tutti = @(@($conGateway + $altri) | Where-Object { $_ -and $_ -notlike '127.*' -and $_ -notlike '169.254.*' } | Select-Object -Unique)
+if ($tutti.Count -gt 0) { $ip = $tutti[0] } else { $ip = "localhost" }
+$listaJson = '[' + (($tutti | ForEach-Object { '"' + $_ + '"' }) -join ',') + ']'
 
 Write-Host ""
 Write-Host "  ==============================================" -ForegroundColor Yellow
@@ -28,7 +36,13 @@ Write-Host ""
 Write-Host "   Sul PC della TV apri:   http://localhost:$Porta/tv.html"
 Write-Host "   Sul telefono apri:      http://${ip}:$Porta/telecomando.html" -ForegroundColor Green
 Write-Host ""
+if ($tutti.Count -gt 1) {
+  Write-Host "   Se sul telefono non si apre, prova questi altri indirizzi:"
+  $tutti | Select-Object -Skip 1 | ForEach-Object { Write-Host ("      http://" + $_ + ":$Porta/telecomando.html") }
+  Write-Host ""
+}
 Write-Host "   Il telefono deve essere connesso alla STESSA rete Wi-Fi del PC."
+Write-Host "   Scrivi l'indirizzo con http:// all'inizio (non https)."
 Write-Host "   NON chiudere questa finestra finche' la mostra e' aperta."
 Write-Host ""
 Start-Process "http://localhost:$Porta/tv.html"
@@ -63,7 +77,7 @@ while ($listener.IsListening) {
         $json = '{"eta":' + $eta + ',"tv":' + $stato + '}'
       }
     } elseif ($path -eq "/api/info") {
-      $json = '{"ip":"' + $ip + '","porta":' + $Porta + '}'
+      $json = '{"ip":"' + $ip + '","tutti":' + $listaJson + ',"porta":' + $Porta + '}'
     }
 
     if ($json -ne $null) {
