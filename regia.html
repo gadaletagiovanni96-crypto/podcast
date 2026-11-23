@@ -230,7 +230,8 @@
   <section class="scheda" id="sRete">
     <div class="card">
       <h2>📡 I PC della mostra</h2>
-      <p class="desc">I PC collegati alla stessa rete compaiono qui da soli, dopo pochi secondi dall'accensione.</p>
+      <p class="desc">I PC collegati alla stessa rete compaiono qui da soli (la ricerca si ripete ogni minuto).</p>
+      <div class="riga-btn" style="margin:0 0 10px"><button class="btn blu piccolo" id="btnCerca">🔍 Cerca i PC adesso</button><span id="statoCerca" class="desc" style="align-self:center;margin:0"></span></div>
       <table><thead><tr><th>PC</th><th>Cosa fa</th><th class="nasc">Indirizzo</th><th>Stato</th><th></th></tr></thead><tbody id="tabRete"></tbody></table>
     </div>
     <div class="card">
@@ -481,6 +482,11 @@
     setTimeout(aggiornaRete, 6000);
   };
   setInterval(() => { if (!$("app").hidden && $("sRete").classList.contains("attiva")) aggiornaRete(); }, 5000);
+  $("btnCerca").onclick = async () => {
+    $("btnCerca").disabled = true; $("statoCerca").textContent = "Ricerca in corso…";
+    try { await api("/api/rete/cerca"); } catch {}
+    setTimeout(async () => { await aggiornaRete(); $("btnCerca").disabled = false; $("statoCerca").textContent = ""; }, 6000);
+  };
 
   /* ---------------- password ---------------- */
   $("btnPwd").onclick = async () => {

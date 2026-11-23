@@ -10,11 +10,15 @@ Opzioni (per prove):  python3 server.py [--porta 8080] [--senza-browser]
 import json, mimetypes, os, re, shutil, socket, subprocess, sys, threading, time, uuid, webbrowser
 from http.server import ThreadingHTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs, unquote, quote
-from urllib.request import urlopen
+from urllib.request import build_opener, ProxyHandler, Request
+from concurrent.futures import ThreadPoolExecutor
 
 ARGOMENTI = sys.argv[1:]
 PORTA = int(ARGOMENTI[ARGOMENTI.index("--porta") + 1]) if "--porta" in ARGOMENTI else 8080
 SENZA_BROWSER = "--senza-browser" in ARGOMENTI
+SENZA_BROADCAST = "--senza-broadcast" in ARGOMENTI   # solo per le prove
+# le richieste agli altri PC della mostra non devono mai passare da un proxy di Windows
+DIRETTO = build_opener(ProxyHandler({}))
 PORTA_SCOPERTA = 47800           # UDP: i PC della mostra si trovano da soli
 CARTELLA = os.path.dirname(os.path.realpath(__file__))
 CARTELLA_CONTENUTI = os.path.join(CARTELLA, "contenuti")
@@ -215,7 +219,7 @@ def ciclo_scoperta():
                 time.sleep(0.5)
     threading.Thread(target=ascolta, daemon=True).start()
 
-    while True:
+    while not SENZA_BROADCAST:
         msg = json.dumps(identita()).encode("utf-8")
         destinazioni = {"255.255.255.255"}
         for ip in IPS:
@@ -230,20 +234,65 @@ def ciclo_scoperta():
         time.sleep(3)
 
 
+def chiedi_identita(indirizzo, attesa=2):
+    """Chiede a un indirizzo "ip:porta" se è un PC della mostra; se sì lo aggiunge all'elenco."""
+    try:
+        # ci presentiamo: così anche l'altro PC trova subito noi
+        richiesta = Request(f"http://{indirizzo}/api/identita", headers={"X-MostraAC": f"{IP}:{PORTA}"})
+        with DIRETTO.open(richiesta, timeout=attesa) as r:
+            info = json.loads(r.read(4096).decode("utf-8"))
+    except (OSError, ValueError):
+        return False
+    if info.get("app") != "MostraAC" or info.get("id") == CONFIG["id"]:
+        return False
+    info["visto"] = time.time()
+    with blocco:
+        compagni[info["id"]] = info
+    return True
+
+
 def ciclo_manuali():
-    """PC aggiunti a mano dalla Regia (se il broadcast è bloccato dal router)."""
+    """PC aggiunti a mano dalla Regia + PC già trovati: li ricontrolla ogni 5 secondi."""
     while True:
-        for ind in list(CONFIG.get("manuali", [])):
-            try:
-                with urlopen(f"http://{ind}/api/identita", timeout=2) as r:
-                    info = json.loads(r.read().decode("utf-8"))
-                if info.get("app") == "MostraAC" and info.get("id") != CONFIG["id"]:
-                    info["visto"] = time.time()
-                    with blocco:
-                        compagni[info["id"]] = info
-            except (OSError, ValueError):
-                pass
+        conosciuti = {f"{v['ip']}:{v['porta']}" for v in list(compagni.values())}
+        for ind in set(CONFIG.get("manuali", [])) | conosciuti:
+            chiedi_identita(ind)
         time.sleep(5)
+
+
+ricerca = {"in_corso": False, "ultima": 0.0}
+
+
+def cerca_pc():
+    """Ricerca sicura anche se il router blocca il broadcast: prova uno per uno gli indirizzi
+    della rete locale sulla porta del programma (la stessa che usano i telefoni)."""
+    if ricerca["in_corso"]:
+        return
+    ricerca["in_corso"] = True
+    try:
+        porte = sorted({PORTA, 8080})
+        candidati = []
+        for ip in IPS:
+            parti = ip.split(".")
+            if len(parti) != 4 or ip.startswith("127."):
+                continue
+            for n in range(1, 255):
+                c = ".".join(parti[:3] + [str(n)])
+                for porta in porte:
+                    if not (c in IPS and porta == PORTA):
+                        candidati.append(f"{c}:{porta}")
+        with ThreadPoolExecutor(max_workers=64) as ex:
+            list(ex.map(lambda ind: chiedi_identita(ind, 0.8), candidati))
+    finally:
+        ricerca["in_corso"] = False
+        ricerca["ultima"] = time.time()
+
+
+def ciclo_ricerca():
+    time.sleep(2)
+    while True:
+        cerca_pc()
+        time.sleep(60)
 
 
 def rete():
@@ -447,9 +496,15 @@ class Gestore(BaseHTTPRequestHandler):
         if p == "/api/info":
             return self._json({"ip": IP, "tutti": IPS, "porta": PORTA})
         if p == "/api/identita":
+            chi = self.headers.get("X-MostraAC", "")
+            if re.match(r"^[\d.]+:\d+$", chi) and chi != f"{IP}:{PORTA}":
+                threading.Thread(target=chiedi_identita, args=(chi,), daemon=True).start()
             return self._json(identita())
         if p == "/api/rete":
-            return self._json({"pc": rete()})
+            return self._json({"pc": rete(), "ricerca": ricerca["in_corso"]})
+        if p == "/api/rete/cerca":
+            threading.Thread(target=cerca_pc, daemon=True).start()
+            return self._json({"ok": True})
         if p == "/api/config":
             return self._json(config_pubblica())
         if p == "/api/postazione":
@@ -702,6 +757,7 @@ if __name__ == "__main__":
         sys.exit(0)
     threading.Thread(target=ciclo_scoperta, daemon=True).start()
     threading.Thread(target=ciclo_manuali, daemon=True).start()
+    threading.Thread(target=ciclo_ricerca, daemon=True).start()
     base = f"http://{IP}:{PORTA}"
     print("\n  ==================================================")
     print("   MOSTRA AC - PROGRAMMA ATTIVO")
