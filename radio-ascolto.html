@@ -143,7 +143,8 @@
   }
   function scegli(i, suona) {
     corrente = i;
-    audio.src = brani[i].file.split("/").map(encodeURIComponent).join("/");
+    // il programma indica dove si trova il file (cartella contenuti/radio)
+    audio.src = brani[i].url || brani[i].file.split("/").map(encodeURIComponent).join("/");
     audio.load();
     $("titolo").textContent = brani[i].nome;
     ["btnPlay", "btnInizio", "btnAvanti"].forEach(id => $(id).disabled = false);
