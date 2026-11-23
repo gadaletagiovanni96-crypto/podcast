@@ -1,4 +1,48 @@
-# 🎙️ Studio Podcast – Azione Cattolica
+# Mostra AC – Studio Podcast, Radio, TV e PC anni 2000
+
+# 🚀 INSTALLAZIONE DELLA MOSTRA (leggi prima questa parte)
+
+Tutto si gestisce da una pagina sola, la **Regia**. Non serve Internet durante la mostra.
+
+## Cosa serve
+- Un **router** (anche quello di casa) a cui collegare i PC e i telefoni dei visitatori. Nelle sue impostazioni **disattiva l'isolamento dei client** (*AP isolation* / *rete ospiti*).
+- Su ogni PC: **Google Chrome** o **Microsoft Edge**.
+
+## 1 · A casa, con Internet (una volta sola per ogni PC)
+1. Copia la cartella **Mostra AC** sul PC (per esempio sul Desktop).
+2. Doppio clic su **`AVVIA.bat`** (sul Mac: `AVVIA-mac.command`).
+   - La prima volta Windows chiede il permesso di amministratore: rispondi **Sì**.
+   - Se manca Python lo installa da solo (serve Internet).
+3. Si apre la **Regia**. Password: **`azione2026`**.
+4. Scegli **che cosa fa questo PC**: 📺 TV · 🖥️ Desktop anni 2000 · 🎙️ Studio Podcast · 📻 Solo radio/regia. Dagli un nome (es. «PC TV»).
+5. Attiva **Avvio automatico** se vuoi che la postazione parta da sola quando accendi il PC.
+6. Scheda **🎬 Contenuti**: **trascina** dentro i video (TV o desktop) e gli audio della radio. Fatto.
+
+## 2 · Alla mostra
+- Accendi router e PC: ogni postazione parte da sola **a schermo intero** (oppure doppio clic su `AVVIA.bat`).
+- I PC **si trovano da soli** sulla rete: li vedi nella scheda **📡 Tutti i PC**.
+- Puoi aprire la Regia anche **dal telefono**: l'indirizzo è scritto nella finestra nera (es. `http://192.168.1.21:8080/regia`).
+
+## 3 · QR code da stampare
+Dalla Regia di **un solo PC** (il «principale», di solito quello della TV) apri **🔳 QR da stampare**:
+1. scrivi nome e password del Wi-Fi;
+2. premi **Scarica tutti i PNG** e stampali.
+
+I QR puntano tutti al PC principale, che manda ogni visitatore al PC giusto. C'è anche il QR **Portale**: un solo QR da cui il visitatore sceglie radio, audio della TV o audio del PC.
+
+> Nel router imposta un **IP fisso/riservato** (*DHCP reservation*) **solo per il PC principale**: così i QR stampati funzionano sempre.
+
+## Durante la mostra
+- **Uscire da una postazione**: tasto **X** → password → *Chiudi la postazione*.
+- **Cambiare impostazioni o contenuti**: dalla Regia, anche a postazione accesa (le modifiche arrivano in pochi secondi; il video della TV si cambia appena è in pausa).
+- **Audio in cuffia** di TV e desktop: interruttore nella scheda **Questo PC** della Regia, con la scelta se farlo uscire anche dalle casse.
+- **Radio**: si accende/spegne dalla scheda **Contenuti**.
+
+---
+
+# 📚 Le postazioni nel dettaglio
+
+## 🎙️ Studio Podcast
 
 Applicazione web (un solo file: `index.html`) per registrare mini podcast durante una mostra.
 Non serve installare niente e funziona **anche senza internet**.
@@ -126,55 +170,10 @@ Se **nessun video è in riproduzione** e nessuno tocca mouse/tastiera per il tem
 
 ---
 
-# 🌐 Programma ponte: telecomando, radio e audio in cuffia
+# 🌐 Dettagli tecnici
 
-Tutto funziona sulla **rete Wi-Fi locale della mostra, senza Internet**. Visitatori e PC devono essere collegati allo stesso Wi-Fi.
-
-Il programma ponte (`server.py`) va avviato sui PC della mostra e fa tre cose:
-1. **Telecomando della TV** dal telefono dell'animatore.
-2. **Radio dal telefono**: i visitatori inquadrano un QR stampato e ascoltano gli audio nelle proprie cuffie (ognuno per conto suo, con Play/Pausa, Inizio, +10 s e barra di scorrimento). Non serve nessun tablet o PC per la radio.
-3. **Audio in diretta di TV e desktop** nelle cuffie dei visitatori (ritardo di circa 0,2–0,3 secondi; l'audio passa dalla stessa connessione delle pagine web, quindi non servono altre porte o regole del firewall).
-
-Nessun QR compare sugli schermi: i QR si **stampano** (PNG).
-
-## Avvio
-| PC | Windows | Mac |
-|---|---|---|
-| TV | `AVVIA-TV.bat` | `AVVIA-TV-mac.command` |
-| Desktop anni 2000 | `AVVIA-DESKTOP.bat` | `AVVIA-DESKTOP-mac.command` |
-| PC solo per la radio (se non usi quello della TV) | `AVVIA-SOLO-RADIO.bat` | — |
-
-- Serve **Python** (gratis). Se manca, il file `.bat` prova a installarlo da solo: **fallo prima della mostra con Internet**. In alternativa: https://www.python.org/downloads/ (spunta *Add python.exe to PATH*).
-- Rispondi **Sì** alla richiesta di Windows (serve ad aprire la porta 8080 alla rete). Se Windows chiede se consentire Python sulle reti, consenti.
-- Si apre una **finestra nera** (non chiuderla) e la postazione si apre da sola nel browser.
-- La prima volta ricarica i video dal pannello animatore (tasto X): la postazione aperta dal programma è per il browser un sito diverso da quella aperta con doppio clic.
-
-## Radio
-1. Copia gli audio nella cartella **`audio`** accanto al programma (sul PC della TV, oppure su un PC dedicato). Per scegliere l'ordine inizia i nomi con un numero: `01 - Benvenuti.mp3`, `02 - La nostra storia.mp3` (il numero non viene mostrato).
-2. I visitatori vedono l'elenco e scelgono cosa ascoltare.
-3. **Accendere/spegnere la radio**: dalla pagina `http://localhost:8080/qr.html` oppure dal pannello animatore di TV o desktop (voce *Radio dal telefono*).
-
-## Audio in cuffia di TV e desktop
-Pannello animatore (tasto X) → **Ascolto dal telefono: Attivo/Spento**.
-- **Audio anche dalle casse**: sì, oppure solo nelle cuffie.
-- Se è spento tutto funziona come prima.
-- Il visitatore apre il QR, tocca **ASCOLTA** e sente l'audio di quello che va sullo schermo; vede anche il titolo del video. Deve tenere lo schermo del telefono acceso.
-- Con un PC normale e un buon router reggono senza problemi 20–30 ascoltatori per postazione.
-
-## QR code da stampare (PNG)
-Apri sul PC **`http://localhost:8080/qr.html`** (si apre da solo con `AVVIA-SOLO-RADIO.bat`):
-1. scrivi nome e password del Wi-Fi (QR per collegarsi alla rete in un attimo);
-2. controlla gli indirizzi dei PC di radio, TV e desktop (quello del PC in uso è già inserito; gli altri li leggi nella finestra nera di ciascun PC);
-3. premi **Scarica tutti i PNG** e stampali.
-
-> **Importante:** i QR stampati funzionano solo se i PC hanno **sempre lo stesso indirizzo**. Nel router imposta un **IP fisso/riservato** (*DHCP reservation*) per ogni PC della mostra.
-
-## Il router
-- Usa un **router vero** (anche quello di casa), non l'hotspot di un telefono: di solito regge solo 5–10 dispositivi.
-- Nelle impostazioni **disattiva l'isolamento dei client** (*AP isolation* / *rete ospiti*), altrimenti i telefoni non raggiungono i PC.
-- Se possibile usa la rete a **5 GHz**.
-- Più PC sulla stessa rete non si danno fastidio: ognuno ha il suo indirizzo e ogni QR punta al suo PC.
-
-## Telecomando della TV
-Sul telefono dell'animatore apri l'indirizzo *Telecomando* scritto nella finestra nera (o stampa il suo QR da `qr.html`), tocca **Accendi il telecomando**: PLAY/PAUSA e INIZIO. Su iPhone, per averlo a tutto schermo, aggiungilo alla schermata Home.
-In alternativa funziona anche un telecomando per presentazioni USB/Bluetooth.
+- `server.py` è il programma che gira su ogni PC (avviato da `AVVIA.bat`/`AVVIA-mac.command`): serve le pagine, i contenuti (cartella `contenuti/`), l'audio in diretta e il telecomando. Le impostazioni stanno in `impostazioni.json`.
+- I PC si annunciano in broadcast sulla porta UDP 47800; le pagine usano la porta TCP 8080. Se il router blocca la ricerca automatica, nella scheda *Tutti i PC* si può aggiungere un PC a mano.
+- Le postazioni vengono aperte in Chrome/Edge in modalità **chiosco** (schermo intero vero, senza barre), con un profilo separato nella cartella `.profilo-browser`.
+- Indirizzi corti dei QR: `/` portale, `/r` radio, `/t` audio TV, `/d` audio desktop, `/telecomando`.
+- Le pagine funzionano ancora anche aperte con doppio clic (senza programma), con il vecchio pannello animatore: in quel caso audio in cuffia, radio e telecomando non sono disponibili.

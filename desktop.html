@@ -341,6 +341,20 @@
 </div>
 
 <!-- Uscita dal fullscreen -->
+<div class="overlay" id="ovRegia">
+  <div class="dialogo">
+    <div class="titolo-f"><svg class="ico"><use href="#i-ac"/></svg><span class="testo">Pannello animatore</span></div>
+    <div class="contenuto">
+      <p>Video, impostazioni e audio in cuffia si gestiscono dalla <b>Regia</b>, da questo PC o dal telefono:<br><b id="regiaUrl" style="color:#0b3d91"></b></p>
+      <p id="regiaInfo"></p>
+      <div class="azioni" style="justify-content:space-between">
+        <button class="pulsante rosso" id="btnChiudiPost">Chiudi la postazione</button>
+        <button class="pulsante primario" id="btnTornaPost">Torna al computer</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="overlay" id="ovFullscreen">
   <div class="dialogo">
     <div class="titolo-f"><svg class="ico"><use href="#i-ac"/></svg><span class="testo">Attenzione</span></div>
@@ -372,8 +386,6 @@
             <select class="campo" id="setQr"><option value="0">Spento (tutto come prima)</option><option value="1">Attivo</option></select></div>
           <div><label>Audio anche dalle casse del PC</label>
             <select class="campo" id="setCasse"><option value="1">Sì</option><option value="0">No, solo nelle cuffie</option></select></div>
-          <div class="full"><label>Radio dal telefono (audio della cartella «audio» di questo PC)</label>
-            <select class="campo" id="setRadio"><option value="1">Attiva</option><option value="0">Spenta</option></select></div>
         </div>
         <p id="infoQr" style="margin:10px 0 0;font-size:13px"></p>
       </fieldset>
@@ -413,6 +425,10 @@
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
   };
   let cfg = Object.assign({}, DEFAULT, ls.get("pc_cfg", {}));
+  // avviato dal programma della mostra: contenuti e impostazioni arrivano dalla Regia
+  const REGIA = location.protocol === "http:" && !/github\.io$/.test(location.hostname);
+  const KIOSK = new URLSearchParams(location.search).has("kiosk");   // browser già a schermo intero
+  let pwdVerificata = "";
   const salvaCfg = () => ls.set("pc_cfg", cfg);
   function applicaCfg() {
     $("lblCartella").textContent = cfg.cartella;
@@ -456,7 +472,24 @@
   };
   try { navigator.storage && navigator.storage.persist && navigator.storage.persist(); } catch {}
   let videoLista = [];
+  const infoCache = {};
   async function caricaLista() {
+    if (REGIA) {
+      let media = [];
+      try { media = (await (await fetch("/api/postazione", { cache: "no-store" })).json()).media || []; } catch {}
+      videoLista = media.map(m => Object.assign({ id: m.file, nome: m.nome, url: m.url, firma: m.firma }, infoCache[m.file + m.firma] || {}));
+      // durata e anteprima si calcolano qui, un video alla volta
+      (async () => {
+        for (const v of videoLista) {
+          const k = v.id + v.firma;
+          if (infoCache[k]) continue;
+          infoCache[k] = await infoVideo(v.url);
+          Object.assign(v, infoCache[k]);
+          disegnaCartella();
+        }
+      })();
+      return;
+    }
     const tutti = await DB.tutti().catch(() => []);
     const pos = id => { const i = cfg.ordine.indexOf(id); return i < 0 ? 1e9 + 0 : i; };
     tutti.sort((a, b) => pos(a.id) - pos(b.id) || a.data - b.data);
@@ -594,7 +627,7 @@
   async function apriVideo(idVideo) {
     const id = "v_" + idVideo;
     if (finestre.has(id)) { const f = finestre.get(id); f.el.classList.remove("ridotta"); attiva(id); return; }
-    const rec = await DB.get(idVideo).catch(() => null);
+    const rec = REGIA ? videoLista.find(x => x.id === idVideo) : await DB.get(idVideo).catch(() => null);
     if (!rec) { toast("Video non trovato"); return; }
     const f = creaFinestra(id, rec.nome, "#i-video", 720, 470);
     f.tipo = "video";
@@ -609,8 +642,9 @@
       </div>`;
     const v = corpo.querySelector("video"), area = corpo.querySelector(".lettore-video");
     const bPlay = corpo.querySelector(".play"), bStop = corpo.querySelector(".stop"), barra = corpo.querySelector(".scorri"), tempo = corpo.querySelector(".tempo-v");
-    f.video = v; f.url = URL.createObjectURL(rec.blob);
-    v.src = f.url; v.volume = cfg.volume / 100;
+    f.video = v;
+    if (REGIA) v.src = rec.url; else { f.url = URL.createObjectURL(rec.blob); v.src = f.url; }
+    v.volume = cfg.volume / 100;
     collegaVideo(v);
     let trascina = false;
     const tot = () => isFinite(v.duration) && v.duration > 0 ? v.duration : (rec.durata || 0);
@@ -674,9 +708,10 @@
 
   /* ================= Fullscreen + blocco ================= */
   let sbloccato = false, avviato = false;
-  const inFs = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  const inFs = () => KIOSK || !!(document.fullscreenElement || document.webkitFullscreenElement);
   async function entraFs() {
     const el = document.documentElement;
+    if (KIOSK) { wake(); return; }
     try {
       if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: "hide" });
       else if (el.webkitRequestFullscreen) el.webkitRequestFullscreen();
@@ -718,8 +753,13 @@
     setTimeout(() => $("inPassword").focus(), 60);
   }
   $("btnPwdAnnulla").onclick = async () => { $("ovPassword").classList.remove("show"); if (!sbloccato && !inFsX()) { await entraFs(); } onFs(); pwdCb = null; };
-  $("btnPwdOk").onclick = () => {
-    if ($("inPassword").value === cfg.password) {
+  $("btnPwdOk").onclick = async () => {
+    let ok = $("inPassword").value === cfg.password;
+    if (REGIA) {
+      try { ok = (await (await fetch("/api/verifica-password", { method: "POST", body: JSON.stringify({ password: $("inPassword").value }) })).json()).ok; } catch { ok = false; }
+      if (ok) pwdVerificata = $("inPassword").value;
+    }
+    if (ok) {
       $("ovPassword").classList.remove("show"); const cb = pwdCb; pwdCb = null; cb && cb();
     } else {
       $("errPassword").textContent = "Password errata";
@@ -729,13 +769,14 @@
   document.addEventListener("keydown", e => {
     if ((e.key === "x" || e.key === "X") && !e.ctrlKey && !e.altKey && !e.metaKey && !e.repeat
         && !/^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && avviato
-        && !$("ovPassword").classList.contains("show") && !$("ovAdmin").classList.contains("show")) {
+        && !document.querySelector(".overlay.show:not(#ovFullscreen)")) {
       e.preventDefault(); chiediPassword(apriAdmin);
     }
   }, true);
 
   /* ================= Pannello animatore ================= */
   async function apriAdmin() {
+    if (REGIA) return apriPannelloRegia();
     sbloccato = true; $("ovFullscreen").classList.remove("show");
     finestre.forEach(f => f.video && f.video.pause());
     $("setCartella").value = cfg.cartella; $("setSfondo").value = cfg.sfondo;
@@ -743,7 +784,6 @@
     $("setVolume").value = cfg.volume; $("lblVolume").textContent = cfg.volume;
     $("setPassword").value = "";
     $("setQr").value = cfg.qr ? "1" : "0"; $("setCasse").value = cfg.casse ? "1" : "0";
-    leggiRadio();
     mostraInfoQr();
     await caricaLista();
     disegnaLibreria();
@@ -771,9 +811,9 @@
   }
   function infoVideo(blob) {
     return new Promise(ok => {
-      const v = document.createElement("video"); const u = URL.createObjectURL(blob);
+      const v = document.createElement("video"); const u = typeof blob === "string" ? blob : URL.createObjectURL(blob);
       let fatto = false;
-      const fine = (durata, thumb) => { if (fatto) return; fatto = true; URL.revokeObjectURL(u); ok({ durata, thumb }); };
+      const fine = (durata, thumb) => { if (fatto) return; fatto = true; if (typeof blob !== "string") URL.revokeObjectURL(u); v.removeAttribute("src"); ok({ durata, thumb }); };
       v.muted = true; v.preload = "auto"; v.src = u;
       v.onloadedmetadata = () => { const d = isFinite(v.duration) ? v.duration : 0; v.currentTime = Math.min(2, d / 3 || 0); v._d = d; };
       v.onseeked = () => {
@@ -817,7 +857,6 @@
     cfg.inattivita = Math.max(10, Math.min(600, parseInt($("setInattivita").value, 10) || DEFAULT.inattivita));
     cfg.volume = parseInt($("setVolume").value, 10); if (isNaN(cfg.volume)) cfg.volume = 100;
     cfg.qr = $("setQr").value === "1"; cfg.casse = $("setCasse").value === "1";
-    scriviRadio($("setRadio").value === "1");
     if ($("setPassword").value) { cfg.password = $("setPassword").value; toast("Password aggiornata"); }
     salvaCfg(); applicaCfg();
     $("ovAdmin").classList.remove("show");
@@ -845,6 +884,41 @@
       });
     } catch {}
   }
+  /* ================= Pannello semplificato (postazione gestita dalla Regia) ================= */
+  async function apriPannelloRegia() {
+    sbloccato = true; $("ovFullscreen").classList.remove("show");
+    finestre.forEach(f => f.video && f.video.pause());
+    try { const j = await MostraAC.info(); $("regiaUrl").textContent = "http://" + j.ip + ":" + j.porta + "/regia"; } catch {}
+    const n = trasmettitore ? trasmettitore.ascoltatori : 0;
+    $("regiaInfo").textContent = cfg.qr ? "🎧 Audio in cuffia attivo · " + n + " in ascolto" : "🎧 Audio in cuffia spento";
+    $("btnChiudiPost").textContent = KIOSK ? "Chiudi la postazione" : "Esci dallo schermo intero";
+    $("ovRegia").classList.add("show");
+  }
+  $("btnTornaPost").onclick = async () => { $("ovRegia").classList.remove("show"); sbloccato = false; ultimaAttivita = Date.now(); await entraFs(); onFs(); };
+  $("btnChiudiPost").onclick = () => {
+    $("ovRegia").classList.remove("show"); chiudiTutto();
+    if (KIOSK) fetch("/api/postazione/chiudi", { method: "POST", body: "{}", headers: { "X-Password": encodeURIComponent(pwdVerificata) } }).catch(() => {});
+    else { esciFs(); toast("Schermo intero disattivato", 4000); }
+  };
+  // le impostazioni cambiate dalla Regia arrivano qui da sole, ogni 3 secondi
+  let firmaImp = "", firmaMedia = "";
+  async function sincronizza() {
+    let j;
+    try { j = await (await fetch("/api/postazione", { cache: "no-store" })).json(); } catch { return; }
+    const imp = j.impostazioni || {};
+    const fi = JSON.stringify(imp), fm = JSON.stringify((j.media || []).map(m => m.file + m.firma));
+    if (fi !== firmaImp) {
+      const prima = { qr: cfg.qr, casse: cfg.casse };
+      Object.assign(cfg, { cartella: imp.cartella || DEFAULT.cartella, sfondo: imp.sfondo || DEFAULT.sfondo,
+        inattivita: imp.inattivita || DEFAULT.inattivita, volume: imp.volume, qr: !!imp.ascolto, casse: imp.casse !== false });
+      applicaCfg();
+      const f = finestre.get("cartella"); if (f) { f.el.querySelector(".titolo-f .testo").textContent = cfg.cartella; f.scheda.querySelector("span").textContent = cfg.cartella; }
+      if (firmaImp && (prima.qr !== cfg.qr || prima.casse !== cfg.casse) && avviato) aggiornaQr();
+      firmaImp = fi;
+    }
+    if (fm !== firmaMedia) { firmaMedia = fm; await caricaLista(); disegnaCartella(); }
+  }
+
   async function avvia() {
     if (avviato) return;
     avviato = true;
@@ -856,7 +930,7 @@
     ultimaAttivita = Date.now();
     onFs();
     aggiornaQr();
-    if (!videoLista.length) toast("La cartella è vuota: l'animatore preme X per aggiungere i video", 5000);
+    if (!videoLista.length) toast(REGIA ? "La cartella è vuota: aggiungi i video dalla Regia" : "La cartella è vuota: l'animatore preme X per aggiungere i video", 5000);
     setTimeout(mostraFumetto, 700);
   }
   $("avvio").onclick = avvia;
@@ -900,13 +974,6 @@
     try { infoServer = await MostraAC.info(); } catch { infoServer = null; }
     trasmettitore.avvia(g.ctx, g.diretta);
   }
-  async function leggiRadio() {
-    try { const j = await (await fetch("/api/config", { cache: "no-store" })).json(); $("setRadio").value = j.radio ? "1" : "0"; } catch {}
-  }
-  function scriviRadio(on) {
-    if (!CON_SERVER) return;
-    fetch("/api/config", { method: "POST", body: JSON.stringify({ radio: on }), headers: { "Content-Type": "application/json" } }).catch(() => {});
-  }
   // dice ai telefoni cosa sta andando
   setInterval(() => {
     if (!cfg.qr || !CON_SERVER) return;
@@ -916,14 +983,17 @@
   }, 1500);
   function mostraInfoQr() {
     const box = $("infoQr");
-    if (!CON_SERVER) { box.innerHTML = "Funziona solo se il desktop è aperto dal <b>programma ponte</b> (AVVIA-DESKTOP): si apre da solo all'indirizzo http://localhost:8080/desktop.html."; return; }
+    if (!CON_SERVER) { box.innerHTML = "Funziona solo avviando il desktop con il programma <b>AVVIA</b>: poi si gestisce tutto dalla Regia."; return; }
     const n = trasmettitore ? trasmettitore.ascoltatori : 0;
-    const qr = "I QR code da stampare (PNG) li trovi su <b>http://localhost:8080/qr.html</b>.";
+    const qr = "I QR code da stampare si generano dalla <b>Regia</b>.";
     box.innerHTML = (cfg.qr ? "✔ Attivo · persone in ascolto ora: <b>" + n + "</b>" : "Ascolto dal telefono spento.") + "<br>" + qr;
   }
 
   applicaCfg();
-  caricaLista();
+  if (REGIA) {
+    sincronizza().then(() => { if (KIOSK) setTimeout(avvia, 300); });
+    setInterval(sincronizza, 3000);
+  } else caricaLista();
 })();
 </script>
 </body>

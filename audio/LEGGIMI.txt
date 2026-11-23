@@ -1,4 +1,0 @@
-Metti in questa cartella gli audio della RADIO (mp3, m4a, wav...).
-Sul telefono compariranno in ordine alfabetico: per scegliere l ordine
-inizia i nomi con un numero, es. "01 - Benvenuti.mp3", "02 - La nostra storia.mp3".
-Il numero iniziale non viene mostrato ai visitatori.

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#061a3a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Mostra AC</title>
+<style>
+  :root { --blu-notte: #061a3a; --blu: #0b3d91; --blu-chiaro: #1e63d6; --giallo: #ffc72c; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { background: var(--blu-notte); }
+  body {
+    min-height: 100vh; font-family: "Segoe UI", -apple-system, "Helvetica Neue", Arial, sans-serif; color: #fff;
+    background: radial-gradient(circle at 20% 0%, rgba(30,99,214,0.6), transparent 55%), radial-gradient(circle at 90% 100%, rgba(255,199,44,0.2), transparent 45%), linear-gradient(170deg, #0b3d91, #061a3a 70%);
+    padding: calc(22px + env(safe-area-inset-top)) 18px calc(24px + env(safe-area-inset-bottom));
+    display: flex; flex-direction: column; align-items: center;
+  }
+  .logo { width: 70px; height: 70px; border-radius: 20px; background: var(--giallo); display: grid; place-items: center; margin-bottom: 14px; box-shadow: 0 10px 30px rgba(255,199,44,0.35); }
+  .logo svg { width: 40px; height: 40px; }
+  h1 { font-size: 1.7rem; text-align: center; line-height: 1.2; }
+  h1 em { font-style: normal; color: var(--giallo); }
+  .sotto { color: rgba(255,255,255,0.78); margin: 8px 0 24px; text-align: center; }
+  .voci { width: 100%; max-width: 440px; display: flex; flex-direction: column; gap: 14px; }
+  a.voce {
+    display: flex; align-items: center; gap: 16px; padding: 18px; border-radius: 22px; text-decoration: none; color: #fff;
+    background: rgba(255,255,255,0.08); border: 2px solid rgba(255,255,255,0.16); transition: transform .1s;
+  }
+  a.voce:active { transform: scale(.97); }
+  .voce .ico { width: 62px; height: 62px; border-radius: 18px; background: var(--giallo); display: grid; place-items: center; flex: none; font-size: 32px; }
+  .voce b { display: block; font-size: 1.2rem; }
+  .voce small { color: rgba(255,255,255,0.75); font-size: .92rem; }
+  .voce .freccia { margin-left: auto; font-size: 1.6rem; color: var(--giallo); }
+  .vuoto, .avviso { text-align: center; color: #ffe08a; font-weight: 700; line-height: 1.5; max-width: 440px; }
+  .avviso { background: rgba(255,77,94,0.15); border: 1px solid rgba(255,77,94,0.5); border-radius: 14px; padding: 12px; margin-bottom: 18px; color: #fff; }
+  .piede { margin-top: 28px; color: rgba(255,255,255,0.6); font-size: .9rem; text-align: center; }
+</style>
+</head>
+<body>
+  <div class="logo"><svg viewBox="0 0 24 24" fill="#061a3a"><path d="M12 3a9 9 0 0 0-9 9v6a3 3 0 0 0 3 3h2v-8H5v-1a7 7 0 0 1 14 0v1h-3v8h2a3 3 0 0 0 3-3v-6a9 9 0 0 0-9-9Z"/></svg></div>
+  <h1>Benvenuti alla <em>mostra</em></h1>
+  <p class="sotto">Scegli cosa vuoi ascoltare con le tue cuffie</p>
+  <div class="avviso" id="avviso" hidden></div>
+  <div class="voci" id="voci"><div class="vuoto">Ricerca delle postazioni…</div></div>
+  <p class="piede">🎧 Usa le cuffie · 🔊 regola il volume con i tasti del telefono</p>
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const manca = new URLSearchParams(location.search).get("manca");
+  const NOMI = { tv: "l'audio della TV", desktop: "l'audio del PC anni 2000", radio: "la radio" };
+  if (manca) { $("avviso").hidden = false; $("avviso").textContent = "In questo momento " + (NOMI[manca] || "questa postazione") + " non è disponibile. Ecco cosa puoi ascoltare:"; }
+  async function aggiorna() {
+    let pcs = [];
+    try { pcs = (await (await fetch("/api/rete", { cache: "no-store" })).json()).pc || []; } catch {}
+    const base = pc => pc.questo ? "" : "http://" + pc.ip + ":" + pc.porta;
+    const voci = [];
+    const radio = pcs.find(p => p.online && p.radio > 0);
+    if (radio) voci.push({ ico: "📻", titolo: "Radio", sotto: radio.radio === 1 ? "1 audio da ascoltare" : radio.radio + " audio da ascoltare", url: base(radio) + "/radio-ascolto.html" });
+    pcs.filter(p => p.online && p.ruolo === "tv" && p.ascolto && p.trasmette).forEach(p => voci.push({ ico: "📺", titolo: "Audio della TV", sotto: "In diretta, mentre guardi il video", url: base(p) + "/ascolta.html?canale=tv" }));
+    pcs.filter(p => p.online && p.ruolo === "desktop" && p.ascolto && p.trasmette).forEach(p => voci.push({ ico: "🖥️", titolo: "Audio del PC anni 2000", sotto: "In diretta, mentre guardi i video", url: base(p) + "/ascolta.html?canale=desktop" }));
+    const box = $("voci"); box.innerHTML = "";
+    if (!voci.length) { box.innerHTML = '<div class="vuoto">Al momento non c\'è niente da ascoltare.<br>Riprova tra poco.</div>'; return; }
+    voci.forEach(v => {
+      const a = document.createElement("a"); a.className = "voce"; a.href = v.url;
+      a.innerHTML = '<span class="ico"></span><span><b></b><small></small></span><span class="freccia">›</span>';
+      a.querySelector(".ico").textContent = v.ico; a.querySelector("b").textContent = v.titolo; a.querySelector("small").textContent = v.sotto;
+      box.appendChild(a);
+    });
+  }
+  aggiorna(); setInterval(aggiorna, 5000);
+})();
+</script>
+</body>
+</html>

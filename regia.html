@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#061a3a">
+<title>Regia · Mostra AC</title>
+<style>
+  :root { --blu-notte: #061a3a; --blu: #0b3d91; --blu-chiaro: #1e63d6; --giallo: #ffc72c; --verde: #1f9d55; --rosso: #d93a4a; --grigio: #e9edf5; --testo: #12233f; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", -apple-system, "Helvetica Neue", Arial, sans-serif; background: var(--grigio); color: var(--testo); min-height: 100vh; }
+  button, input, select { font: inherit; }
+  [hidden] { display: none !important; }
+
+  header { background: linear-gradient(170deg, #0b3d91, #061a3a); color: #fff; padding: 14px 18px 0; position: sticky; top: 0; z-index: 10; box-shadow: 0 4px 16px rgba(0,0,0,0.2); }
+  .testa { max-width: 1000px; margin: 0 auto; display: flex; align-items: center; gap: 12px; }
+  .logo { width: 44px; height: 44px; border-radius: 13px; background: var(--giallo); display: grid; place-items: center; flex: none; }
+  .logo svg { width: 26px; height: 26px; }
+  .testa h1 { font-size: 1.25rem; } .testa small { color: var(--giallo); font-weight: 600; }
+  .testa .pc { margin-left: auto; text-align: right; font-size: .85rem; opacity: .9; }
+  nav { max-width: 1000px; margin: 12px auto 0; display: flex; gap: 4px; overflow-x: auto; scrollbar-width: none; }
+  nav button { background: none; border: none; color: rgba(255,255,255,0.75); padding: 10px 14px; border-radius: 12px 12px 0 0; cursor: pointer; font-weight: 700; white-space: nowrap; }
+  nav button.attivo { background: var(--grigio); color: var(--blu); }
+
+  main { max-width: 1000px; margin: 0 auto; padding: 18px 14px 60px; }
+  .scheda { display: none; } .scheda.attiva { display: block; }
+  .card { background: #fff; border-radius: 16px; padding: 18px 20px; box-shadow: 0 4px 16px rgba(10,30,70,0.08); margin-bottom: 16px; }
+  .card h2 { font-size: 1.15rem; color: var(--blu); margin-bottom: 4px; display: flex; align-items: center; gap: 8px; }
+  .card p.desc { color: #4a5872; margin-bottom: 14px; line-height: 1.45; font-size: .95rem; }
+  .griglia { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; }
+  .griglia .full { grid-column: 1 / -1; }
+  label.l { display: block; font-weight: 700; font-size: .88rem; margin-bottom: 4px; }
+  .campo { width: 100%; padding: 10px 12px; border: 2px solid #ccd6ea; border-radius: 10px; background: #fff; color: var(--testo); }
+  .campo:focus { outline: none; border-color: var(--blu-chiaro); }
+  .btn { border: none; border-radius: 12px; padding: 11px 18px; font-weight: 800; cursor: pointer; background: var(--giallo); color: var(--blu-notte); display: inline-flex; align-items: center; gap: 8px; }
+  .btn.blu { background: var(--blu-chiaro); color: #fff; } .btn.rosso { background: var(--rosso); color: #fff; } .btn.chiaro { background: #e3eaf8; color: var(--blu); }
+  .btn.piccolo { padding: 7px 12px; font-size: .88rem; border-radius: 10px; }
+  .btn:disabled { opacity: .5; cursor: default; }
+  .riga-btn { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+  .interruttore { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 0; border-top: 1px solid #edf1f8; }
+  .interruttore:first-of-type { border-top: none; }
+  .interruttore b { display: block; } .interruttore small { color: #5c6a85; }
+  .sw { position: relative; width: 56px; height: 32px; flex: none; }
+  .sw input { opacity: 0; width: 0; height: 0; }
+  .sw span { position: absolute; inset: 0; border-radius: 99px; background: #c5cfe2; cursor: pointer; transition: background .2s; }
+  .sw span::after { content: ""; position: absolute; left: 4px; top: 4px; width: 24px; height: 24px; border-radius: 50%; background: #fff; transition: transform .2s; box-shadow: 0 1px 3px rgba(0,0,0,0.3); }
+  .sw input:checked + span { background: var(--verde); } .sw input:checked + span::after { transform: translateX(24px); }
+  .stato { display: inline-flex; align-items: center; gap: 6px; font-weight: 700; font-size: .85rem; padding: 4px 10px; border-radius: 99px; background: #eef2f9; }
+  .stato i { width: 9px; height: 9px; border-radius: 50%; background: #9aa6bd; }
+  .stato.ok { background: #dff5e8; color: #126b39; } .stato.ok i { background: var(--verde); }
+  .stato.ko { background: #fde4e7; color: #a3172a; } .stato.ko i { background: var(--rosso); }
+
+  /* ruoli */
+  .ruoli { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .ruolo { border: 3px solid #dfe6f3; border-radius: 16px; padding: 16px; cursor: pointer; background: #fff; text-align: left; }
+  .ruolo.scelto { border-color: var(--giallo); background: #fff9e6; }
+  .ruolo .e { font-size: 2rem; } .ruolo b { display: block; margin: 6px 0 2px; } .ruolo small { color: #5c6a85; line-height: 1.35; display: block; }
+
+  /* contenuti */
+  .zona { border: 3px dashed #b9c6e0; border-radius: 16px; padding: 18px; text-align: center; color: #4a5872; cursor: pointer; transition: background .15s, border-color .15s; }
+  .zona.sopra { background: #fff7dc; border-color: var(--giallo); }
+  .zona b { color: var(--blu); }
+  .zona input { display: none; }
+  .elenco { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
+  .file { display: flex; align-items: center; gap: 10px; border: 1px solid #e3e9f4; border-radius: 12px; padding: 8px 10px; }
+  .file.in-onda { border-color: var(--giallo); background: #fffaea; }
+  .file .nome { flex: 1; min-width: 0; }
+  .file .nome input { width: 100%; border: 1px solid transparent; border-radius: 8px; padding: 6px 8px; background: transparent; font-weight: 600; color: var(--testo); }
+  .file .nome input:hover, .file .nome input:focus { border-color: #ccd6ea; background: #fff; outline: none; }
+  .file small { color: #5c6a85; white-space: nowrap; }
+  .file .x { border: none; background: #fde4e7; color: var(--rosso); width: 34px; height: 34px; border-radius: 10px; cursor: pointer; font-weight: 800; flex: none; }
+  .file .onda { border: 2px solid #ccd6ea; background: #fff; border-radius: 10px; padding: 5px 8px; cursor: pointer; font-weight: 700; font-size: .8rem; color: #5c6a85; flex: none; }
+  .file.in-onda .onda { border-color: var(--giallo); background: var(--giallo); color: var(--blu-notte); }
+  .barra { height: 8px; border-radius: 99px; background: #e3e9f4; overflow: hidden; margin-top: 10px; }
+  .barra div { height: 100%; width: 0; background: var(--blu-chiaro); transition: width .2s; }
+  .vuoto { color: #7b88a1; font-size: .92rem; padding: 6px 2px; }
+
+  /* rete */
+  table { width: 100%; border-collapse: collapse; font-size: .92rem; }
+  th, td { text-align: left; padding: 9px 6px; border-bottom: 1px solid #edf1f8; vertical-align: middle; }
+  th { color: #5c6a85; font-size: .8rem; text-transform: uppercase; letter-spacing: .5px; }
+
+  /* qr */
+  .qr-griglia { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 14px; margin-top: 12px; }
+  .qr-carta { text-align: center; } .qr-carta canvas { width: 100%; border-radius: 10px; display: block; margin-bottom: 8px; box-shadow: 0 3px 10px rgba(0,0,0,0.15); }
+  .qr-carta b { display: block; margin-bottom: 6px; font-size: .9rem; }
+  .nota { background: #fff7dc; border-left: 5px solid var(--giallo); border-radius: 8px; padding: 10px 14px; font-size: .92rem; line-height: 1.5; margin-top: 12px; }
+
+  /* accesso */
+  .accesso { min-height: 100vh; display: grid; place-items: center; padding: 20px; background: linear-gradient(170deg, #0b3d91, #061a3a); }
+  .accesso .card { width: min(400px, 100%); text-align: center; }
+  .errore { color: var(--rosso); font-weight: 700; min-height: 1.3em; margin-top: 8px; }
+  .toast { position: fixed; left: 50%; bottom: 20px; transform: translateX(-50%) translateY(120px); background: var(--blu-notte); color: #fff; padding: 12px 20px; border-radius: 12px; font-weight: 700; transition: transform .25s; z-index: 50; max-width: 90vw; text-align: center; }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+  @media (max-width: 640px) { .griglia { grid-template-columns: 1fr; } .testa .pc { display: none; } th.nasc, td.nasc { display: none; } }
+</style>
+</head>
+<body>
+
+<!-- ACCESSO -->
+<div class="accesso" id="schermoAccesso">
+  <div class="card">
+    <div class="logo" style="margin:0 auto 12px"><svg viewBox="0 0 24 24" fill="#061a3a"><path d="M12 2 3 6v6c0 5 3.8 9.4 9 10 5.2-.6 9-5 9-10V6l-9-4Zm0 6a2.5 2.5 0 0 1 1 4.8V16h-2v-3.2A2.5 2.5 0 0 1 12 8Z"/></svg></div>
+    <h2 style="justify-content:center">Regia della mostra</h2>
+    <p class="desc">Inserisci la password dell'animatore</p>
+    <input class="campo" type="password" id="inPassword" placeholder="Password" style="text-align:center">
+    <div class="errore" id="errAccesso"></div>
+    <div class="riga-btn" style="justify-content:center"><button class="btn" id="btnEntra">Entra</button></div>
+  </div>
+</div>
+
+<div id="app" hidden>
+<header>
+  <div class="testa">
+    <div class="logo"><svg viewBox="0 0 24 24" fill="#061a3a"><path d="M12 3a9 9 0 0 0-9 9v6a3 3 0 0 0 3 3h2v-8H5v-1a7 7 0 0 1 14 0v1h-3v8h2a3 3 0 0 0 3-3v-6a9 9 0 0 0-9-9Z"/></svg></div>
+    <div><h1>Regia</h1><small>Mostra AC</small></div>
+    <div class="pc"><b id="hNome">…</b><br><span id="hIndirizzo">…</span></div>
+  </div>
+  <nav id="nav">
+    <button data-s="sPostazione" class="attivo">🏠 Questo PC</button>
+    <button data-s="sContenuti">🎬 Contenuti</button>
+    <button data-s="sRete">📡 Tutti i PC</button>
+    <button data-s="sQr">🔳 QR da stampare</button>
+    <button data-s="sAltro">⚙️ Altro</button>
+  </nav>
+</header>
+
+<main>
+  <!-- ============ QUESTO PC ============ -->
+  <section class="scheda attiva" id="sPostazione">
+    <div class="card" id="cardBenvenuto" hidden>
+      <h2>👋 Benvenuto! Prepariamo questo PC</h2>
+      <p class="desc">Scegli che cosa farà questo computer durante la mostra. Puoi cambiarlo quando vuoi.</p>
+    </div>
+    <div class="card">
+      <h2>Che cosa fa questo PC?</h2>
+      <p class="desc">Ogni PC della mostra fa una cosa sola. Gli audio della radio possono stare su uno qualsiasi.</p>
+      <div class="ruoli" id="ruoli"></div>
+      <div class="griglia" style="margin-top:14px">
+        <div><label class="l">Nome di questo PC</label><input class="campo" id="nomePc" maxlength="30"></div>
+      </div>
+      <div class="interruttore" style="margin-top:8px">
+        <div><b>Avvio automatico</b><small>Quando accendi il PC la postazione parte da sola, a schermo intero.</small></div>
+        <label class="sw"><input type="checkbox" id="avvioAuto"><span></span></label>
+      </div>
+    </div>
+    <div class="card" id="cardAvvio">
+      <h2>Postazione</h2>
+      <p class="desc" id="descAvvio"></p>
+      <div class="riga-btn">
+        <button class="btn" id="btnAvvia">▶ Avvia a schermo intero</button>
+        <button class="btn chiaro" id="btnChiudi">■ Chiudi la postazione</button>
+      </div>
+      <p class="desc" style="margin:12px 0 0;font-size:.85rem">Durante la mostra: per uscire dalla postazione premi <b>X</b> sulla tastiera e inserisci la password.</p>
+    </div>
+
+    <div class="card" id="impTv" hidden>
+      <h2>📺 Impostazioni della TV</h2>
+      <p class="desc">Le modifiche arrivano alla TV in pochi secondi, anche se è accesa.</p>
+      <div class="interruttore">
+        <div><b>Audio in cuffia dal telefono</b><small>I visitatori ascoltano la TV in diretta col proprio telefono.</small></div>
+        <label class="sw"><input type="checkbox" data-k="tv.ascolto"><span></span></label>
+      </div>
+      <div class="interruttore">
+        <div><b>Audio anche dalle casse della TV</b><small>Se lo spegni, l'audio si sente solo nelle cuffie.</small></div>
+        <label class="sw"><input type="checkbox" data-k="tv.casse"><span></span></label>
+      </div>
+      <div class="griglia" style="margin-top:8px">
+        <div><label class="l">Scritta sulla schermata blu</label><input class="campo" data-k="tv.titolo" maxlength="30"></div>
+        <div><label class="l">Canale</label><input class="campo" data-k="tv.canale" maxlength="8"></div>
+        <div><label class="l">Adattamento del video</label><select class="campo" data-k="tv.adatta"><option value="contain">Intero (bande nere)</option><option value="cover">Riempi lo schermo</option></select></div>
+        <div><label class="l">Effetto tubo catodico</label><select class="campo" data-k="tv.crt"><option value="off">Spento (TV vera)</option><option value="leggero">Leggero</option><option value="forte">Forte (monitor moderno)</option></select></div>
+        <div class="full"><label class="l">Volume casse: <span data-v="tv.volume"></span>%</label><input type="range" min="0" max="100" step="5" data-k="tv.volume" style="width:100%"></div>
+      </div>
+    </div>
+
+    <div class="card" id="impDesktop" hidden>
+      <h2>🖥️ Impostazioni del desktop</h2>
+      <p class="desc">Le modifiche arrivano al desktop in pochi secondi, anche se è acceso.</p>
+      <div class="interruttore">
+        <div><b>Audio in cuffia dal telefono</b><small>I visitatori ascoltano in diretta il video che sta andando.</small></div>
+        <label class="sw"><input type="checkbox" data-k="desktop.ascolto"><span></span></label>
+      </div>
+      <div class="interruttore">
+        <div><b>Audio anche dalle casse del PC</b><small>Se lo spegni, l'audio si sente solo nelle cuffie.</small></div>
+        <label class="sw"><input type="checkbox" data-k="desktop.casse"><span></span></label>
+      </div>
+      <div class="griglia" style="margin-top:8px">
+        <div><label class="l">Nome della cartella</label><input class="campo" data-k="desktop.cartella" maxlength="30"></div>
+        <div><label class="l">Scritta sullo sfondo</label><input class="campo" data-k="desktop.sfondo" maxlength="20"></div>
+        <div><label class="l">Ritorno al desktop dopo (secondi senza attività)</label><input class="campo" type="number" min="10" max="600" data-k="desktop.inattivita"></div>
+        <div><label class="l">Volume casse: <span data-v="desktop.volume"></span>%</label><input type="range" min="0" max="100" step="5" data-k="desktop.volume" style="width:100%"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CONTENUTI ============ -->
+  <section class="scheda" id="sContenuti">
+    <div class="card" id="cTv" hidden>
+      <h2>📺 Video della TV</h2>
+      <p class="desc">Trascina qui i video (MP4 consigliato). Quello segnato <b>IN ONDA</b> è il video che la TV trasmette.</p>
+      <div class="zona" data-tipo="tv"><b>Trascina qui i video</b> oppure tocca per sceglierli<input type="file" multiple accept="video/*"></div>
+      <div class="barra" hidden><div></div></div>
+      <div class="elenco" data-elenco="tv"></div>
+      <div class="riga-btn solo-locale"><button class="btn chiaro piccolo" data-apri="tv">📂 Apri la cartella dei video</button></div>
+    </div>
+    <div class="card" id="cDesktop" hidden>
+      <h2>🖥️ Video del desktop</h2>
+      <p class="desc">Compaiono nella cartella del desktop in ordine alfabetico. Per scegliere l'ordine inizia i nomi con un numero: «01 - Gita», «02 - Campo» (il numero non viene mostrato).</p>
+      <div class="zona" data-tipo="desktop"><b>Trascina qui i video</b> oppure tocca per sceglierli<input type="file" multiple accept="video/*"></div>
+      <div class="barra" hidden><div></div></div>
+      <div class="elenco" data-elenco="desktop"></div>
+      <div class="riga-btn solo-locale"><button class="btn chiaro piccolo" data-apri="desktop">📂 Apri la cartella dei video</button></div>
+    </div>
+    <div class="card">
+      <h2>📻 Radio dal telefono <span class="stato" id="statoRadio"><i></i><span></span></span></h2>
+      <p class="desc">Gli audio della radio stanno su <b>questo</b> PC. I visitatori li ascoltano con il proprio telefono, ognuno per conto suo. Per l'ordine usa i numeri all'inizio del nome.</p>
+      <div class="interruttore">
+        <div><b>Radio attiva su questo PC</b><small>Se in mostra ci sono più PC, tieni gli audio della radio su uno solo.</small></div>
+        <label class="sw"><input type="checkbox" data-k="radio"><span></span></label>
+      </div>
+      <div class="zona" data-tipo="radio" style="margin-top:8px"><b>Trascina qui gli audio</b> (MP3, M4A, WAV…) oppure tocca per sceglierli<input type="file" multiple accept="audio/*"></div>
+      <div class="barra" hidden><div></div></div>
+      <div class="elenco" data-elenco="radio"></div>
+      <div class="riga-btn solo-locale"><button class="btn chiaro piccolo" data-apri="radio">📂 Apri la cartella degli audio</button></div>
+    </div>
+  </section>
+
+  <!-- ============ RETE ============ -->
+  <section class="scheda" id="sRete">
+    <div class="card">
+      <h2>📡 I PC della mostra</h2>
+      <p class="desc">I PC collegati alla stessa rete compaiono qui da soli, dopo pochi secondi dall'accensione.</p>
+      <table><thead><tr><th>PC</th><th>Cosa fa</th><th class="nasc">Indirizzo</th><th>Stato</th><th></th></tr></thead><tbody id="tabRete"></tbody></table>
+    </div>
+    <div class="card">
+      <h2>Un PC non compare?</h2>
+      <p class="desc">Controlla che sia acceso, con il programma aperto e sulla stessa rete. Se il router blocca la ricerca automatica, aggiungilo a mano con l'indirizzo scritto nella sua finestra nera (es. <i>192.168.1.22:8080</i>).</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><input class="campo" id="inManuale" placeholder="192.168.1.22:8080" style="max-width:260px"><button class="btn blu" id="btnManuale">Aggiungi</button></div>
+      <div class="elenco" id="elencoManuali"></div>
+    </div>
+  </section>
+
+  <!-- ============ QR ============ -->
+  <section class="scheda" id="sQr">
+    <div class="card">
+      <h2>🔳 QR code da stampare</h2>
+      <p class="desc">Tutti i QR puntano a <b>questo PC</b> (<span id="qrIndirizzo"></span>), che smista i visitatori verso il PC giusto. Generali da un solo PC, quello che fa da principale.</p>
+      <div class="griglia">
+        <div><label class="l">Nome della rete Wi-Fi</label><input class="campo" data-k="wifi.rete" placeholder="es. Mostra AC"></div>
+        <div><label class="l">Password del Wi-Fi</label><input class="campo" data-k="wifi.pwd" placeholder="vuota se non c'è"></div>
+      </div>
+      <div class="riga-btn"><button class="btn" id="btnTuttiPng">⬇ Scarica tutti i PNG</button></div>
+      <div class="qr-griglia" id="qrGriglia"></div>
+      <div class="nota"><b>Importante:</b> perché i QR stampati funzionino sempre, <b>questo PC</b> deve avere sempre lo stesso indirizzo. Nel router imposta un <b>IP fisso/riservato</b> (spesso si chiama <i>DHCP reservation</i>) solo per questo PC. Gli altri PC vengono trovati da soli.</div>
+    </div>
+  </section>
+
+  <!-- ============ ALTRO ============ -->
+  <section class="scheda" id="sAltro">
+    <div class="card">
+      <h2>🔑 Password dell'animatore</h2>
+      <p class="desc">Serve per entrare nella Regia e per uscire dalle postazioni (tasto X). Vale solo per questo PC.</p>
+      <div style="display:flex;gap:10px;flex-wrap:wrap"><input class="campo" type="text" id="nuovaPwd" placeholder="Nuova password" style="max-width:260px"><button class="btn blu" id="btnPwd">Cambia password</button></div>
+    </div>
+    <div class="card">
+      <h2>📱 Telecomando della TV</h2>
+      <p class="desc">Dal telefono dell'animatore: PLAY/PAUSA e INIZIO della TV. Il suo QR si trova nella scheda «QR da stampare».</p>
+      <a class="btn chiaro piccolo" href="/telecomando" target="_blank">Apri il telecomando</a>
+    </div>
+    <div class="card">
+      <h2>🎙️ Studio Podcast</h2>
+      <p class="desc">Le registrazioni vengono salvate nella cartella <b>Download</b> del PC dello studio.</p>
+    </div>
+  </section>
+</main>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="qrcode.js"></script>
+<script src="diretta.js"></script>
+<script>
+(() => {
+  "use strict";
+  const $ = id => document.getElementById(id);
+  const fmtMb = mb => mb >= 1024 ? (mb / 1024).toFixed(1) + " GB" : mb + " MB";
+  const LOCALE = ["localhost", "127.0.0.1"].includes(location.hostname);
+  let pwd = "";
+  try { pwd = sessionStorage.getItem("regia_pwd") || ""; } catch {}
+  let cfg = null, info = null;
+
+  function toast(t, ms = 2600) { const e = $("toast"); e.textContent = t; e.classList.add("show"); clearTimeout(toast._t); toast._t = setTimeout(() => e.classList.remove("show"), ms); }
+  async function api(percorso, dati, metodo) {
+    const r = await fetch(percorso, { method: metodo || (dati !== undefined ? "POST" : "GET"), cache: "no-store",
+      headers: { "Content-Type": "application/json", "X-Password": encodeURIComponent(pwd) }, body: dati !== undefined ? JSON.stringify(dati) : undefined });
+    const j = await r.json().catch(() => ({}));
+    if (r.status === 403) { esci(); throw new Error("password"); }
+    if (!r.ok) throw new Error(j.errore || "errore");
+    return j;
+  }
+
+  /* ---------------- accesso ---------------- */
+  async function prova(p) {
+    try { return (await (await fetch("/api/verifica-password", { method: "POST", body: JSON.stringify({ password: p }) })).json()).ok; } catch { return false; }
+  }
+  async function entra() {
+    const p = $("inPassword").value;
+    if (await prova(p)) { pwd = p; try { sessionStorage.setItem("regia_pwd", p); } catch {} avvia(); }
+    else { $("errAccesso").textContent = "Password errata"; $("inPassword").select(); }
+  }
+  function esci() { pwd = ""; try { sessionStorage.removeItem("regia_pwd"); } catch {} $("app").hidden = true; $("schermoAccesso").hidden = false; }
+  $("btnEntra").onclick = entra;
+  $("inPassword").addEventListener("keydown", e => { if (e.key === "Enter") entra(); });
+
+  /* ---------------- navigazione ---------------- */
+  $("nav").addEventListener("click", e => {
+    const b = e.target.closest("button"); if (!b) return;
+    document.querySelectorAll("nav button").forEach(x => x.classList.toggle("attivo", x === b));
+    document.querySelectorAll(".scheda").forEach(s => s.classList.toggle("attiva", s.id === b.dataset.s));
+    if (b.dataset.s === "sQr") disegnaQr();
+    if (b.dataset.s === "sRete") aggiornaRete();
+    window.scrollTo(0, 0);
+  });
+  if (!LOCALE) document.querySelectorAll(".solo-locale").forEach(e => e.hidden = true);
+
+  /* ---------------- impostazioni (salvataggio automatico) ---------------- */
+  const leggi = k => k.split(".").reduce((o, x) => o && o[x], cfg);
+  function oggetto(k, v) { const parti = k.split("."), o = {}; let c = o; parti.forEach((p, i) => { if (i === parti.length - 1) c[p] = v; else c = c[p] = {}; }); return o; }
+  let salvaT = {};
+  function salva(k, v, subito) {
+    clearTimeout(salvaT[k]);
+    salvaT[k] = setTimeout(async () => {
+      try { cfg = await api("/api/config", oggetto(k, v)); disegnaTutto(false); toast("✔ Salvato"); }
+      catch (e) { if (e.message !== "password") toast("⚠ Non salvato: " + e.message); }
+    }, subito ? 0 : 500);
+  }
+  document.querySelectorAll("[data-k]").forEach(el => {
+    const k = el.dataset.k;
+    const ev = el.type === "checkbox" || el.tagName === "SELECT" ? "change" : "input";
+    el.addEventListener(ev, () => {
+      let v = el.type === "checkbox" ? el.checked : el.value;
+      if (el.type === "range" || el.type === "number") v = Number(v);
+      if (el.type === "range") document.querySelectorAll(`[data-v="${k}"]`).forEach(s => s.textContent = v);
+      // aggiorno subito anche la copia locale, senza aspettare il salvataggio
+      const parti = k.split("."); let o = cfg; parti.slice(0, -1).forEach(x => o = o[x]); o[parti[parti.length - 1]] = v;
+      salva(k, v, el.type === "checkbox" || el.tagName === "SELECT");
+      if (k.startsWith("wifi.")) disegnaQr();
+    });
+  });
+
+  /* ---------------- questo PC ---------------- */
+  const RUOLI = [
+    { id: "tv", e: "📺", nome: "TV a tubo catodico", desc: "Trasmette un video, con telecomando e audio in cuffia." },
+    { id: "desktop", e: "🖥️", nome: "Desktop anni 2000", desc: "Una cartella di video da aprire, con audio in cuffia." },
+    { id: "studio", e: "🎙️", nome: "Studio Podcast", desc: "I ragazzi registrano il loro mini podcast." },
+    { id: "radio", e: "📻", nome: "Solo radio / regia", desc: "Nessuna postazione a schermo: tiene la radio e i QR." },
+  ];
+  RUOLI.forEach(r => {
+    const b = document.createElement("button"); b.className = "ruolo"; b.dataset.r = r.id;
+    b.innerHTML = `<span class="e">${r.e}</span><b>${r.nome}</b><small>${r.desc}</small>`;
+    b.onclick = async () => {
+      try { cfg = await api("/api/config", { ruolo: r.id }); disegnaTutto(true); toast("✔ Questo PC ora è: " + r.nome); } catch {}
+    };
+    $("ruoli").appendChild(b);
+  });
+  $("nomePc").addEventListener("change", () => salva("nome", $("nomePc").value.trim() || "PC", true));
+  $("avvioAuto").addEventListener("change", () => salva("avvio_automatico", $("avvioAuto").checked, true));
+  $("btnAvvia").onclick = async () => { try { await api("/api/postazione/avvia", {}); toast("▶ Postazione avviata"); } catch {} };
+  $("btnChiudi").onclick = async () => { try { await api("/api/postazione/chiudi", {}); toast("■ Postazione chiusa"); } catch {} };
+
+  function disegnaTutto(compreso) {
+    $("hNome").textContent = cfg.nome;
+    $("hIndirizzo").textContent = info ? info.ip + ":" + info.porta : "";
+    $("cardBenvenuto").hidden = !!cfg.ruolo;
+    document.querySelectorAll(".ruolo").forEach(b => b.classList.toggle("scelto", b.dataset.r === cfg.ruolo));
+    if (compreso || document.activeElement !== $("nomePc")) $("nomePc").value = cfg.nome;
+    $("avvioAuto").checked = !!cfg.avvio_automatico;
+    const conSchermo = ["tv", "desktop", "studio"].includes(cfg.ruolo);
+    $("cardAvvio").hidden = !conSchermo;
+    $("descAvvio").textContent = conSchermo ? "Apre la postazione a schermo intero su questo PC." : "";
+    $("impTv").hidden = $("cTv").hidden = cfg.ruolo !== "tv";
+    $("impDesktop").hidden = $("cDesktop").hidden = cfg.ruolo !== "desktop";
+    document.querySelectorAll("[data-k]").forEach(el => {
+      if (el === document.activeElement && !compreso) return;
+      const v = leggi(el.dataset.k);
+      if (el.type === "checkbox") el.checked = !!v; else if (v !== undefined) el.value = v;
+    });
+    document.querySelectorAll("[data-v]").forEach(s => s.textContent = leggi(s.dataset.v));
+    const st = $("statoRadio"); st.className = "stato " + (cfg.radio ? "ok" : "ko"); st.querySelector("span").textContent = cfg.radio ? "ATTIVA" : "SPENTA";
+    disegnaManuali();
+  }
+
+  /* ---------------- contenuti ---------------- */
+  const media = { tv: [], desktop: [], radio: [] };
+  async function caricaMedia(tipo) {
+    try { media[tipo] = (await api("/api/media/" + tipo)).file || []; } catch { media[tipo] = []; }
+    disegnaMedia(tipo);
+  }
+  function disegnaMedia(tipo) {
+    const box = document.querySelector(`[data-elenco="${tipo}"]`); box.innerHTML = "";
+    if (!media[tipo].length) { box.innerHTML = '<div class="vuoto">Nessun file per ora.</div>'; return; }
+    const inOnda = tipo === "tv" ? (media.tv.find(f => f.file === cfg.tv.attivo) || media.tv[0]).file : null;
+    media[tipo].forEach(f => {
+      const r = document.createElement("div"); r.className = "file" + (f.file === inOnda ? " in-onda" : "");
+      r.innerHTML = `${tipo === "tv" ? '<button class="onda"></button>' : ""}<div class="nome"><input></div><small>${fmtMb(f.mb)}</small><button class="x" title="Elimina">✕</button>`;
+      const inp = r.querySelector("input"); inp.value = f.file;
+      inp.addEventListener("change", async () => {
+        const nuovo = inp.value.trim(); if (!nuovo || nuovo === f.file) { inp.value = f.file; return; }
+        try { await api(`/api/media/${tipo}/rinomina`, { file: f.file, nuovo }); if (tipo === "tv" && cfg.tv.attivo === f.file) salva("tv.attivo", "", true); toast("✔ Rinominato"); } catch (e) { toast("⚠ " + e.message); }
+        caricaMedia(tipo);
+      });
+      r.querySelector(".x").onclick = async () => {
+        if (!confirm(`Eliminare «${f.nome}»? Il file verrà cancellato da questo PC.`)) return;
+        try { await api(`/api/media/${tipo}/elimina`, { file: f.file }); toast("✔ Eliminato"); } catch (e) { toast("⚠ " + e.message); }
+        caricaMedia(tipo);
+      };
+      const on = r.querySelector(".onda");
+      if (on) { on.textContent = f.file === inOnda ? "IN ONDA" : "Metti in onda"; on.onclick = () => { salva("tv.attivo", f.file, true); cfg.tv.attivo = f.file; disegnaMedia("tv"); }; }
+      box.appendChild(r);
+    });
+  }
+  function carica(tipo, files, zona) {
+    const barra = zona.nextElementSibling, riemp = barra.firstElementChild;
+    const lista = [...files]; let i = 0;
+    const prossimo = () => {
+      if (i >= lista.length) { barra.hidden = true; caricaMedia(tipo); toast("✔ Caricamento completato"); return; }
+      const f = lista[i++];
+      const x = new XMLHttpRequest();
+      x.open("POST", `/api/media/${tipo}/carica?nome=` + encodeURIComponent(f.name));
+      x.setRequestHeader("X-Password", encodeURIComponent(pwd));
+      x.upload.onprogress = e => { if (e.lengthComputable) riemp.style.width = (((i - 1) + e.loaded / e.total) / lista.length * 100) + "%"; };
+      x.onload = () => { if (x.status !== 200) { let m = "errore"; try { m = JSON.parse(x.responseText).errore; } catch {} toast("⚠ " + f.name + ": " + m, 4000); } prossimo(); };
+      x.onerror = () => { toast("⚠ Caricamento interrotto: " + f.name, 4000); prossimo(); };
+      x.send(f);
+    };
+    barra.hidden = false; riemp.style.width = "0"; prossimo();
+  }
+  document.querySelectorAll(".zona").forEach(z => {
+    const inp = z.querySelector("input"), tipo = z.dataset.tipo;
+    z.onclick = () => inp.click();
+    inp.onchange = () => { if (inp.files.length) carica(tipo, inp.files, z); inp.value = ""; };
+    z.addEventListener("dragover", e => { e.preventDefault(); z.classList.add("sopra"); });
+    z.addEventListener("dragleave", () => z.classList.remove("sopra"));
+    z.addEventListener("drop", e => { e.preventDefault(); z.classList.remove("sopra"); if (e.dataTransfer.files.length) carica(tipo, e.dataTransfer.files, z); });
+  });
+  document.querySelectorAll("[data-apri]").forEach(b => b.onclick = async () => { try { await api(`/api/media/${b.dataset.apri}/apri`, {}); } catch {} });
+
+  /* ---------------- rete ---------------- */
+  const NOMI = { tv: "📺 TV", desktop: "🖥️ Desktop", studio: "🎙️ Studio", radio: "📻 Radio/regia" };
+  async function aggiornaRete() {
+    let pcs = [];
+    try { pcs = (await api("/api/rete")).pc || []; } catch {}
+    const t = $("tabRete"); t.innerHTML = "";
+    pcs.forEach(p => {
+      const extra = [];
+      if (p.ascolto) extra.push(p.trasmette ? `🎧 ${p.ascoltatori} in ascolto` : "🎧 audio non in onda");
+      if (p.radio) extra.push(`📻 ${p.radio} audio`);
+      const tr = document.createElement("tr");
+      tr.innerHTML = `<td><b></b>${p.questo ? " <small>(questo)</small>" : ""}</td><td>${NOMI[p.ruolo] || "<i>da scegliere</i>"}<br><small>${extra.join(" · ")}</small></td>
+        <td class="nasc">${p.ip}:${p.porta}</td><td><span class="stato ${p.online ? "ok" : "ko"}"><i></i>${p.online ? "acceso" : "spento"}</span></td>
+        <td>${p.questo ? "" : `<a class="btn chiaro piccolo" target="_blank" href="http://${p.ip}:${p.porta}/regia.html">Regia</a>`}</td>`;
+      tr.querySelector("b").textContent = p.nome;
+      t.appendChild(tr);
+    });
+  }
+  function disegnaManuali() {
+    const box = $("elencoManuali"); box.innerHTML = "";
+    (cfg.manuali || []).forEach(m => {
+      const r = document.createElement("div"); r.className = "file";
+      r.innerHTML = '<div class="nome" style="padding:6px 8px"></div><button class="x">✕</button>';
+      r.querySelector(".nome").textContent = m;
+      r.querySelector(".x").onclick = () => salva("manuali", cfg.manuali.filter(x => x !== m), true);
+      box.appendChild(r);
+    });
+  }
+  $("btnManuale").onclick = () => {
+    let v = $("inManuale").value.trim().replace(/^https?:\/\//, "").replace(/\/.*$/, "");
+    if (!v) return; if (!/:\d+$/.test(v)) v += ":8080";
+    salva("manuali", [...new Set([...(cfg.manuali || []), v])], true); $("inManuale").value = "";
+    setTimeout(aggiornaRete, 6000);
+  };
+  setInterval(() => { if (!$("app").hidden && $("sRete").classList.contains("attiva")) aggiornaRete(); }, 5000);
+
+  /* ---------------- password ---------------- */
+  $("btnPwd").onclick = async () => {
+    const n = $("nuovaPwd").value.trim(); if (n.length < 4) { toast("⚠ Almeno 4 caratteri"); return; }
+    try { cfg = await api("/api/config", { password: n }); pwd = n; try { sessionStorage.setItem("regia_pwd", n); } catch {} $("nuovaPwd").value = ""; toast("🔑 Password cambiata"); } catch {}
+  };
+
+  /* ---------------- QR (PNG) ---------------- */
+  function rr(x, cx, cy, w, h, r) { x.beginPath(); x.moveTo(cx + r, cy); x.arcTo(cx + w, cy, cx + w, cy + h, r); x.arcTo(cx + w, cy + h, cx, cy + h, r); x.arcTo(cx, cy + h, cx, cy, r); x.arcTo(cx, cy, cx + w, cy, r); x.closePath(); }
+  function cartello({ num, titolo, evid, sotto, testoQr, righe }) {
+    const W = 1200, H = 1600, c = document.createElement("canvas"); c.width = W; c.height = H;
+    const x = c.getContext("2d"), font = (p, s) => `${p} ${s}px "Segoe UI", Arial, sans-serif`;
+    const g = x.createLinearGradient(0, 0, W * 0.4, H); g.addColorStop(0, "#1552b8"); g.addColorStop(0.55, "#0b3d91"); g.addColorStop(1, "#061a3a");
+    x.fillStyle = "#ffc72c"; rr(x, 0, 0, W, H, 70); x.fill(); x.fillStyle = g; rr(x, 18, 18, W - 36, H - 36, 56); x.fill();
+    x.fillStyle = "#ffc72c"; x.beginPath(); x.arc(W / 2, 150, 62, 0, Math.PI * 2); x.fill();
+    x.fillStyle = "#061a3a"; x.font = font(900, 70); x.textAlign = "center"; x.textBaseline = "middle"; x.fillText(String(num), W / 2, 154);
+    x.font = font(800, 84); x.textBaseline = "alphabetic";
+    const a = titolo + " ", wa = x.measureText(a).width, wb = x.measureText(evid).width, sx = (W - wa - wb) / 2;
+    x.textAlign = "left"; x.fillStyle = "#fff"; x.fillText(a, sx, 320); x.fillStyle = "#ffc72c"; x.fillText(evid, sx + wa, 320);
+    x.textAlign = "center"; x.fillStyle = "rgba(255,255,255,0.85)"; x.font = font(500, 40); x.fillText(sotto, W / 2, 390);
+    qrcode.stringToBytes = qrcode.stringToBytesFuncs["UTF-8"];
+    const q = qrcode(0, "M"); q.addData(testoQr, "Byte"); q.make();
+    const n = q.getModuleCount(), lato = 820, bx = (W - lato) / 2, by = 450;
+    x.fillStyle = "#fff"; rr(x, bx, by, lato, lato, 36); x.fill();
+    const mod = Math.floor((lato - 120) / n), ox = bx + (lato - mod * n) / 2, oy = by + (lato - mod * n) / 2;
+    x.fillStyle = "#061a3a";
+    for (let r = 0; r < n; r++) for (let k = 0; k < n; k++) if (q.isDark(r, k)) x.fillRect(ox + k * mod, oy + r * mod, mod, mod);
+    let y = by + lato + 90;
+    righe.forEach(([t, giallo, mono]) => { x.font = mono ? `600 40px Consolas, "Courier New", monospace` : font(700, 46); x.fillStyle = giallo ? "#ffc72c" : "#fff"; x.fillText(t, W / 2, y); y += 64; });
+    x.font = font(700, 34); x.fillStyle = "rgba(255,255,255,0.55)"; x.fillText("AZIONE CATTOLICA", W / 2, H - 70);
+    return c;
+  }
+  let carte = [];
+  function disegnaQr() {
+    if (!cfg || !info) return;
+    const base = "http://" + info.ip + ":" + info.porta;
+    $("qrIndirizzo").textContent = base;
+    const rete = (cfg.wifi.rete || "").trim(), pw = cfg.wifi.pwd || "";
+    const dopo = rete ? "Dopo esserti collegato al Wi-Fi inquadra qui" : "Collegati al Wi-Fi della mostra e inquadra qui";
+    const n = rete ? 2 : 1;
+    carte = [];
+    if (rete) carte.push({ file: "QR-1-WiFi.png", nome: "Collegati al Wi-Fi", num: 1, titolo: "Collegati al", evid: "Wi-Fi", sotto: "Inquadra con la fotocamera e tocca «Connetti»", testoQr: MostraAC.testoWifi(rete, pw), righe: [["Rete: " + rete, true], ...(pw ? [["Password: " + pw, false]] : [])] });
+    carte.push({ file: "QR-Portale.png", nome: "Portale (tutto in un QR)", num: n, titolo: "Ascolta la", evid: "mostra", sotto: dopo, testoQr: base + "/", righe: [["🎧 Radio, TV e PC nelle tue cuffie", false], [base, true, true]] });
+    carte.push({ file: "QR-Radio.png", nome: "Radio", num: n, titolo: "Ascolta la", evid: "radio", sotto: dopo, testoQr: base + "/r", righe: [["🎧 Usa le tue cuffie", false], [base + "/r", true, true]] });
+    carte.push({ file: "QR-TV.png", nome: "Audio della TV", num: n, titolo: "Audio della", evid: "TV", sotto: dopo, testoQr: base + "/t", righe: [["🎧 Ascolta in cuffia, in diretta", false], [base + "/t", true, true]] });
+    carte.push({ file: "QR-Desktop.png", nome: "Audio del PC anni 2000", num: n, titolo: "Audio del", evid: "PC", sotto: dopo, testoQr: base + "/d", righe: [["🎧 Ascolta in cuffia, in diretta", false], [base + "/d", true, true]] });
+    carte.push({ file: "QR-Telecomando.png", nome: "Telecomando TV (animatore)", num: "📱", titolo: "Telecomando", evid: "TV", sotto: "Solo per l'animatore", testoQr: base + "/telecomando", righe: [[base + "/telecomando", true, true]] });
+    const box = $("qrGriglia"); box.innerHTML = "";
+    carte.forEach(k => {
+      const d = document.createElement("div"); d.className = "qr-carta";
+      k.canvas = cartello(k);
+      const b = document.createElement("b"); b.textContent = k.nome;
+      const btn = document.createElement("button"); btn.className = "btn piccolo"; btn.textContent = "⬇ Scarica PNG"; btn.onclick = () => scarica(k);
+      d.append(b, k.canvas, btn); box.appendChild(d);
+    });
+  }
+  function scarica(k) {
+    k.canvas.toBlob(b => { const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = k.file; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 2000); }, "image/png");
+  }
+  $("btnTuttiPng").onclick = () => carte.forEach((k, i) => setTimeout(() => scarica(k), i * 400));
+
+  /* ---------------- avvio ---------------- */
+  async function avvia() {
+    $("schermoAccesso").hidden = true; $("app").hidden = false;
+    try { info = await MostraAC.info(); } catch {}
+    try { cfg = await api("/api/config"); } catch { return; }
+    disegnaTutto(true);
+    ["tv", "desktop", "radio"].forEach(caricaMedia);
+    if (!cfg.ruolo) toast("👋 Scegli che cosa fa questo PC", 4000);
+  }
+  // aggiorna ogni tanto (se un'altra persona cambia qualcosa da un altro dispositivo)
+  setInterval(async () => {
+    if ($("app").hidden || document.activeElement && ["INPUT", "SELECT"].includes(document.activeElement.tagName)) return;
+    try { cfg = await api("/api/config"); disegnaTutto(false); } catch {}
+  }, 8000);
+  (async () => { if (pwd && await prova(pwd)) avvia(); else { pwd = ""; $("inPassword").focus(); } })();
+})();
+</script>
+</body>
+</html>

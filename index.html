@@ -504,8 +504,13 @@
 
   /* ======================= Fullscreen + blocco ======================= */
   let sbloccato = false;     // true quando l'animatore ha inserito la password per uscire
-  const inFullscreen = () => !!(document.fullscreenElement || document.webkitFullscreenElement);
+  // avviato dal programma della mostra: password della Regia e browser già a schermo intero
+  const REGIA = location.protocol === "http:" && !/github\.io$/.test(location.hostname);
+  const KIOSK = new URLSearchParams(location.search).has("kiosk");
+  let pwdVerificata = "";
+  const inFullscreen = () => KIOSK || !!(document.fullscreenElement || document.webkitFullscreenElement);
   async function entraFullscreen() {
+    if (KIOSK) { richiediWakeLock(); return; }
     const el = document.documentElement;
     try {
       if (el.requestFullscreen) await el.requestFullscreen({ navigationUI: "hide" });
@@ -566,8 +571,13 @@
     setTimeout(() => $("inPassword").focus(), 50);
   }
   $("btnPwdAnnulla").onclick = async () => { $("ovPassword").classList.remove("show"); if (!sbloccato && !inFsX()) { await entraFullscreen(); } onFsChange(); pwdCallback = null; };
-  $("btnPwdOk").onclick = () => {
-    if ($("inPassword").value === cfg.password) {
+  $("btnPwdOk").onclick = async () => {
+    let ok = $("inPassword").value === cfg.password;
+    if (REGIA) {
+      try { ok = (await (await fetch("/api/verifica-password", { method: "POST", body: JSON.stringify({ password: $("inPassword").value }) })).json()).ok; } catch { ok = false; }
+      if (ok) pwdVerificata = $("inPassword").value;
+    }
+    if (ok) {
       $("ovPassword").classList.remove("show");
       const cb = pwdCallback; pwdCallback = null; cb && cb();
     } else {
@@ -1015,6 +1025,7 @@
   $("btnEsci").onclick = () => {
     $("ovAdmin").classList.remove("show");
     sbloccato = true;
+    if (KIOSK) { fetch("/api/postazione/chiudi", { method: "POST", body: "{}", headers: { "X-Password": encodeURIComponent(pwdVerificata) } }).catch(() => {}); return; }
     esciFullscreen();
     toast("Schermo intero disattivato: ora puoi chiudere la scheda. Per tornare allo studio premi X.", 6000);
   };
@@ -1051,6 +1062,7 @@
   }
   $("btnAvvia").onclick = e => { e.stopPropagation(); avvia(); };
   $("startCard").onclick = avvia;
+  if (KIOSK) { $("btnEsci").textContent = "Chiudi la postazione"; setTimeout(avvia, 400); }
 
   applicaCfg();
 })();
