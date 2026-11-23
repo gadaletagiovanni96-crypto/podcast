@@ -308,17 +308,32 @@ def avvia_postazione():
 
 
 def chiudi_postazione():
+    """Chiude il browser della postazione. Chrome/Edge su Windows passano spesso la finestra a un
+    altro processo (e dopo un riavvio del programma non sappiamo quale sia): per questo chiudiamo
+    tutti i processi avviati con il profilo della mostra, riconoscibili dalla loro riga di comando."""
     p = browser.get("processo")
     if p and p.poll() is None:
         try:
             p.terminate()
-            p.wait(5)
+            p.wait(3)
         except Exception:
             try:
                 p.kill()
             except Exception:
                 pass
     browser["processo"] = None
+    profilo = os.path.join(CARTELLA, ".profilo-browser")
+    try:
+        if sys.platform.startswith("win"):
+            cerca = profilo.replace("'", "''")
+            comando = ("Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains('"
+                       + cerca + "') } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }")
+            subprocess.run(["powershell", "-NoProfile", "-NonInteractive", "-Command", comando],
+                           timeout=20, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+        else:
+            subprocess.run(["pkill", "-f", "--", "user-data-dir=" + profilo], timeout=10)
+    except (OSError, subprocess.SubprocessError):
+        pass
 
 
 def imposta_avvio_automatico(attivo):
@@ -608,7 +623,7 @@ class Gestore(BaseHTTPRequestHandler):
         if p == "/api/postazione/avvia":
             return self._json({"ok": avvia_postazione()})
         if p == "/api/postazione/chiudi":
-            chiudi_postazione()
+            threading.Thread(target=lambda: (time.sleep(0.5), chiudi_postazione()), daemon=True).start()
             return self._json({"ok": True})
         self._json({"errore": "sconosciuto"}, 404)
 

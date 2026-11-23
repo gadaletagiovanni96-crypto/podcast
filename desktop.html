@@ -897,8 +897,10 @@
   $("btnTornaPost").onclick = async () => { $("ovRegia").classList.remove("show"); sbloccato = false; ultimaAttivita = Date.now(); await entraFs(); onFs(); };
   $("btnChiudiPost").onclick = () => {
     $("ovRegia").classList.remove("show"); chiudiTutto();
-    if (KIOSK) fetch("/api/postazione/chiudi", { method: "POST", body: "{}", headers: { "X-Password": encodeURIComponent(pwdVerificata) } }).catch(() => {});
-    else { esciFs(); toast("Schermo intero disattivato", 4000); }
+    if (KIOSK) {
+      fetch("/api/postazione/chiudi", { method: "POST", body: "{}", headers: { "X-Password": encodeURIComponent(pwdVerificata) } }).catch(() => {});
+      sbloccato = true; setTimeout(() => { try { window.close(); } catch {} }, 1500);
+    } else { esciFs(); toast("Schermo intero disattivato", 4000); }
   };
   // le impostazioni cambiate dalla Regia arrivano qui da sole, ogni 3 secondi
   let firmaImp = "", firmaMedia = "";

@@ -725,6 +725,7 @@
     $("ovRegia").classList.remove("show"); video.pause();
     if (KIOSK) {
       fetch("/api/postazione/chiudi", { method: "POST", body: "{}", headers: { "X-Password": encodeURIComponent(pwdVerificata) } }).catch(() => {});
+      sbloccato = true; setTimeout(() => { try { window.close(); } catch {} }, 1500);
     } else { esciFs(); toast("SCHERMO INTERO DISATTIVATO", 4000); }
   };
   // le impostazioni cambiate dalla Regia arrivano qui da sole, ogni 3 secondi

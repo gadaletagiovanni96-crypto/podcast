@@ -1025,7 +1025,8 @@
   $("btnEsci").onclick = () => {
     $("ovAdmin").classList.remove("show");
     sbloccato = true;
-    if (KIOSK) { fetch("/api/postazione/chiudi", { method: "POST", body: "{}", headers: { "X-Password": encodeURIComponent(pwdVerificata) } }).catch(() => {}); return; }
+    if (KIOSK) { fetch("/api/postazione/chiudi", { method: "POST", body: "{}", headers: { "X-Password": encodeURIComponent(pwdVerificata) } }).catch(() => {});
+      sbloccato = true; setTimeout(() => { try { window.close(); } catch {} }, 1500); return; }
     esciFullscreen();
     toast("Schermo intero disattivato: ora puoi chiudere la scheda. Per tornare allo studio premi X.", 6000);
   };
