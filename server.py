@@ -680,6 +680,13 @@ class Server(ThreadingHTTPServer):
     daemon_threads = True
     allow_reuse_address = True
 
+    def handle_error(self, request, client_address):
+        # browser chiuso o telefono che si stacca: la connessione si interrompe, è normale
+        errore = sys.exc_info()[1]
+        if isinstance(errore, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError, TimeoutError)):
+            return
+        super().handle_error(request, client_address)
+
 
 if __name__ == "__main__":
     for t in TIPI_MEDIA:
